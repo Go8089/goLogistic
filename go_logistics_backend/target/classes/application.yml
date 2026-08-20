@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: go_logistics_backendc
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fastly
+    username: postgres
+    password: postgres
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+    show-sql: false
+
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8080
