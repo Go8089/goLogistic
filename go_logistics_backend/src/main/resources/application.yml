@@ -1,21 +1,30 @@
 spring:
   application:
-    name: go_logistics_backendc
+    name: go_logistics_backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/fastly
-    username: postgres
-    password: postgres
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
-
-    show-sql: false
-
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
 
 server:
   port: 8080
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

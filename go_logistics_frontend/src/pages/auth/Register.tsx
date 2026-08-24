@@ -1,7 +1,8 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Truck } from "lucide-react";
+import { register } from "../../services/authService";
+
 
 export default function Register() {
   const navigate = useNavigate();
@@ -29,16 +30,36 @@ export default function Register() {
     }));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+ const [error, setError] = useState("");
 
-    if (form.password !== form.confirmPassword) {
-      return;
-    }
 
-    // Temporary frontend registration
-    navigate("/dashboard");
+const handleSubmit = async (
+  event: React.FormEvent
+) => {
+  event.preventDefault();
+
+  if (form.password !== form.confirmPassword) {
+    setError("Passwords do not match");
+    return;
   }
+
+  try {
+    await register({
+      name: form.name,
+      email: form.email,
+      password: form.password,
+      phone: form.phone,
+    });
+
+    navigate("/login");
+  } catch (error) {
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Registration failed"
+    );
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -70,6 +91,12 @@ export default function Register() {
 
           {/* Form */}
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            {error && (
+             <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+              {error}
+            </p>
+            )}
+
             <form
               onSubmit={handleSubmit}
               className="space-y-4"

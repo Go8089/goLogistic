@@ -8,7 +8,7 @@ import {
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
-
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 // Public Pages
 import Home from "./pages/Home";
 import Services from "./pages/Services";
@@ -92,6 +92,7 @@ export default function App() {
       {/* =========================
           ADMIN
       ========================= */}
+      <Route element={<ProtectedRoute allowedRole="ADMIN" />}>
       <Route
         path="/admin/login"
         element={<AdminLogin />}
@@ -133,9 +134,13 @@ export default function App() {
         path="/admin/payments"
         element={<AdminPayments />}
         />
+        </Route>
       {/* =========================
           CUSTOMER DASHBOARD
       ========================= */}
+      <Route
+  element={<ProtectedRoute allowedRole="CUSTOMER" />}
+>
       <Route
         path="/dashboard"
         element={<DashboardLayout />}
@@ -196,7 +201,7 @@ export default function App() {
           element={<PaymentSuccess />}
         />
       </Route>
-
+</Route>
       {/* =========================
           404
       ========================= */}

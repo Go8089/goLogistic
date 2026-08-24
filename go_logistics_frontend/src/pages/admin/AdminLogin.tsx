@@ -1,21 +1,47 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ShieldCheck } from "lucide-react";
-
+import { adminLogin } from "../../services/authService";
 export default function AdminLogin() {
   const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const handleSubmit = async (
+  event: React.FormEvent
+) => {
+  event.preventDefault();
 
-    // Temporary frontend login.
+  try {
+    const data = await adminLogin(
+      email,
+      password
+    );
+
+    localStorage.setItem("token", data.token);
+
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        id: data.userId,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+      })
+    );
+
     navigate("/admin");
+  } catch (error) {
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Admin login failed"
+    );
   }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -39,6 +65,11 @@ export default function AdminLogin() {
 
           {/* Form */}
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            {error && (
+             <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+              {error}
+            </p>
+            )}
             <form
               onSubmit={handleSubmit}
               className="space-y-5"
