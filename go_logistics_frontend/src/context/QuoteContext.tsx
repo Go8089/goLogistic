@@ -1,9 +1,12 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
+
+import api from "../services/api";
 
 export type QuoteStatus =
   | "Pending"
@@ -30,49 +33,14 @@ export interface Quote {
 
 interface QuoteContextType {
   quotes: Quote[];
+  loading: boolean;
+  error: string;
   updateQuoteStatus: (
     id: string,
     status: QuoteStatus
-  ) => void;
+  ) => Promise<void>;
+  refreshQuotes: () => Promise<void>;
 }
-
-const initialQuotes: Quote[] = [
-  {
-    id: "QT10001",
-    status: "Approved",
-    pickupLocation: "Pune, Maharashtra",
-    deliveryLocation: "Mumbai, Maharashtra",
-    cargoType: "Commercial Goods",
-    weight: "850 kg",
-    vehicleCategory: "Heavy Truck",
-    bodyType: "Container",
-    containerSize: "32 ft",
-    pickupDate: "25 Aug 2026",
-    validUntil: "24 Aug 2026",
-    transportationCharge: 15000,
-    handlingCharge: 1000,
-    tollCharge: 1500,
-    otherCharges: 500,
-  },
-
-  {
-    id: "QT10002",
-    status: "Pending",
-    pickupLocation: "Pune, Maharashtra",
-    deliveryLocation: "Nagpur, Maharashtra",
-    cargoType: "Industrial Equipment",
-    weight: "1,200 kg",
-    vehicleCategory: "Heavy Truck",
-    bodyType: "Container",
-    containerSize: "32 ft",
-    pickupDate: "27 Aug 2026",
-    validUntil: "26 Aug 2026",
-    transportationCharge: 26000,
-    handlingCharge: 1500,
-    tollCharge: 3000,
-    otherCharges: 1000,
-  },
-];
 
 const QuoteContext = createContext<
   QuoteContextType | undefined
@@ -83,27 +51,92 @@ export function QuoteProvider({
 }: {
   children: ReactNode;
 }) {
-  const [quotes, setQuotes] =
-    useState<Quote[]>(initialQuotes);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  function updateQuoteStatus(
+  async function refreshQuotes() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await api.get("/admin/quotes");
+
+      const data = response.data;
+
+      setQuotes(
+        Array.isArray(data)
+          ? data
+          : data.content ?? []
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load quotes:",
+        error
+      );
+
+      setError("Failed to load quotes");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refreshQuotes();
+  }, []);
+
+  async function updateQuoteStatus(
     id: string,
     status: QuoteStatus
   ) {
-    setQuotes((current) =>
-      current.map((quote) =>
-        quote.id === id
-          ? { ...quote, status }
-          : quote
-      )
-    );
+    try {
+      setError("");
+
+      let response;
+
+      if (status === "Approved") {
+        response = await api.patch(
+          `/admin/quotes/${id}/approve`
+        );
+      } else if (status === "Rejected") {
+        response = await api.patch(
+          `/admin/quotes/${id}/reject`
+        );
+      } else {
+        return;
+      }
+
+      const updatedQuote = response.data;
+
+      setQuotes((current) =>
+        current.map((quote) =>
+          quote.id === id
+            ? updatedQuote
+            : quote
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Failed to update quote status:",
+        error
+      );
+
+      setError(
+        "Failed to update quote status"
+      );
+
+      throw error;
+    }
   }
 
   return (
     <QuoteContext.Provider
       value={{
         quotes,
+        loading,
+        error,
         updateQuoteStatus,
+        refreshQuotes,
       }}
     >
       {children}

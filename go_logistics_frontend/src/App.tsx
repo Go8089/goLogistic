@@ -22,7 +22,11 @@ import NotFound from "./pages/NotFound";
 // Auth Pages
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-
+import VerifyEmail from "./pages/auth/VerifyEmail";
+import VerifyPhone from "./pages/auth/VerifyPhone";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import VerifyResetOtp from "./pages/auth/VerifyResetOtp";
+import ResetPassword from "./pages/auth/ResetPassword";
 // Customer Dashboard
 import Dashboard from "./pages/dashboard/Dashboard";
 import Shipments from "./pages/dashboard/Shipments";
@@ -88,7 +92,28 @@ export default function App() {
         path="/register"
         element={<Register />}
       />
+      <Route
+        path="/verify-email"
+        element={<VerifyEmail />}
+      />
+      <Route
+        path="/verify-phone"
+        element={<VerifyPhone />}
+      />
+      <Route
+  path="/forgot-password"
+  element={<ForgotPassword />}
+/>
 
+<Route
+  path="/verify-reset-otp"
+  element={<VerifyResetOtp />}
+/>
+
+<Route
+  path="/reset-password"
+  element={<ResetPassword />}
+/>
       {/* =========================
           ADMIN
       ========================= */}

@@ -49,6 +49,12 @@ private String state;
 
 @Column
 private String pincode;
+
+@Column(nullable = false)
+private boolean emailVerified = false;
+
+@Column(nullable = false)
+private boolean phoneVerified = false;
     @PrePersist
     void onCreate() {
         createdAt = LocalDateTime.now();
@@ -144,5 +150,21 @@ public String getPincode() {
 
 public void setPincode(String pincode) {
     this.pincode = pincode;
+}
+
+public boolean isEmailVerified() {
+    return emailVerified;
+}
+
+public void setEmailVerified(boolean emailVerified) {
+    this.emailVerified = emailVerified;
+}
+
+public boolean isPhoneVerified() {
+    return phoneVerified;
+}
+
+public void setPhoneVerified(boolean phoneVerified) {
+    this.phoneVerified = phoneVerified;
 }
 }

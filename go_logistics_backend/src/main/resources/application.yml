@@ -17,14 +17,24 @@ spring:
         format_sql: true
 
 server:
-  port: 8080
+  port: 8085
 
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION}
+
+otp:
+  expiration-minutes: ${OTP_EXPIRATION_MINUTES}
+  max-attempts: ${OTP_MAX_ATTEMPTS}
+aws:
+  region: ${AWS_REGION}
+ses:
+  sender-email: ${AWS_SES_SENDER_EMAIL}  
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+    health:
+      show-details: never      

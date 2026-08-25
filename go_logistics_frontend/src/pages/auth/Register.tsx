@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Truck } from "lucide-react";
 import { register } from "../../services/authService";
 
 
 export default function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] =
@@ -44,14 +45,26 @@ const handleSubmit = async (
   }
 
   try {
-    await register({
-      name: form.name,
-      email: form.email,
-      password: form.password,
-      phone: form.phone,
-    });
+      await register({
+  name: form.name,
+  email: form.email,
+  password: form.password,
+  phone: `+91${form.phone}`,
+});
 
-    navigate("/login");
+navigate("/verify-email", {
+  state: {
+    email: form.email,
+    phone: `+91${form.phone}`,
+  },
+});
+
+navigate("/verify-phone", {
+  state: {
+    phone: location.state?.phone,
+  },
+});
+navigate("/login");
   } catch (error) {
     setError(
       error instanceof Error
@@ -118,14 +131,41 @@ const handleSubmit = async (
                 placeholder="you@example.com"
               />
 
-              <Field
-                label="Phone number"
-                name="phone"
-                type="tel"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder="10-digit mobile number"
-              />
+              <div>
+  <label
+    htmlFor="phone"
+    className="block text-sm font-medium text-gray-700"
+  >
+    Phone Number
+  </label>
+
+  <div className="mt-2 flex">
+    <span className="inline-flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 px-4 text-sm text-gray-600">
+      +91
+    </span>
+
+    <input
+      id="phone"
+      name="phone"
+      type="tel"
+      inputMode="numeric"
+      maxLength={10}
+      value={form.phone}
+      onChange={(event) => {
+        const value = event.target.value
+          .replace(/\D/g, "")
+          .slice(0, 10);
+
+        setForm((current) => ({
+          ...current,
+          phone: value,
+        }));
+      }}
+      placeholder="9876543210"
+      className="w-full rounded-r-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+    />
+  </div>
+</div>
 
               {/* Password */}
               <div>

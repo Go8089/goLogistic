@@ -70,6 +70,17 @@ public class AuthService {
                 "Invalid email or password"
             );
         }
+        if (!user.isEmailVerified()) {
+    throw new IllegalArgumentException(
+        "Please verify your email before login"
+    );
+}
+
+if (!user.isPhoneVerified()) {
+    throw new IllegalArgumentException(
+        "Please verify your mobile number before login"
+    );
+} 
 
         String token =
             jwtService.generateToken(user);
