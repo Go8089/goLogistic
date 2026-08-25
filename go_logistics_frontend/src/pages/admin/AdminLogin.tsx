@@ -9,39 +9,40 @@ export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+ const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (
-  event: React.FormEvent
-) => {
-  event.preventDefault();
+ const handleSubmit = async (
+   event: React.FormEvent
+ ) => {
+   event.preventDefault();
+   setError("");
+   setIsSubmitting(true);
 
-  try {
-    const data = await adminLogin(
-      email,
-      password
-    );
+   try {
+     const data = await adminLogin(email, password);
 
-    localStorage.setItem("token", data.token);
+     localStorage.setItem("token", data.token);
+     localStorage.setItem(
+       "user",
+       JSON.stringify({
+         id: data.userId,
+         name: data.name,
+         email: data.email,
+         role: data.role,
+       })
+     );
 
-    localStorage.setItem(
-      "user",
-      JSON.stringify({
-        id: data.userId,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-      })
-    );
-
-    navigate("/admin");
-  } catch (error) {
-    setError(
-      error instanceof Error
-        ? error.message
-        : "Admin login failed"
-    );
-  }
-};
+     navigate("/admin");
+   } catch (error) {
+     setError(
+       error instanceof Error
+         ? error.message
+         : "Admin login failed"
+     );
+   } finally {
+     setIsSubmitting(false);
+   }
+ };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -136,9 +137,10 @@ export default function AdminLogin() {
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                disabled={isSubmitting}
+                className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
               >
-                Admin Sign In
+                {isSubmitting ? "Signing in..." : "Admin Sign In"}
               </button>
             </form>
 

@@ -1,5 +1,6 @@
 package com.goLogistic.auth;
 
+import com.goLogistic.exception.BadRequestException;
 import com.goLogistic.security.JwtService;
 import com.goLogistic.user.Role;
 import com.goLogistic.user.User;
@@ -28,26 +29,24 @@ public class AdminAuthService {
     public AuthResponse login(LoginRequest request) {
 
         User user = userRepository
-            .findByEmail(request.email().toLowerCase())
+            .findByEmailIgnoreCase(request.email().trim())
             .orElseThrow(() ->
-                new IllegalArgumentException(
-                    "Invalid admin credentials"
-                )
+                new BadRequestException("Invalid admin credentials")
             );
 
+        if (!user.isEnabled()) {
+            throw new BadRequestException("Admin account is disabled");
+        }
+
         if (user.getRole() != Role.ADMIN) {
-            throw new IllegalArgumentException(
-                "Admin access denied"
-            );
+            throw new BadRequestException("Admin access denied");
         }
 
         if (!passwordEncoder.matches(
             request.password(),
             user.getPassword()
         )) {
-            throw new IllegalArgumentException(
-                "Invalid admin credentials"
-            );
+            throw new BadRequestException("Invalid admin credentials");
         }
 
         String token = jwtService.generateToken(user);

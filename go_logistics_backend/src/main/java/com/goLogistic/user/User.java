@@ -30,119 +30,155 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role;
+   private Role role = Role.CUSTOMER;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+   @Column(nullable = false, columnDefinition = "boolean default true")
+   private boolean enabled = true;
 
-    @Column
-     private String companyName;
+   @Column(nullable = false, columnDefinition = "boolean default false")
+   private boolean emailVerified = false;
 
-@Column
-private String address;
+   @Column(nullable = false, updatable = false, columnDefinition = "timestamp default CURRENT_TIMESTAMP")
+   private LocalDateTime createdAt;
 
-@Column
-private String city;
+   @Column(nullable = false, columnDefinition = "timestamp default CURRENT_TIMESTAMP")
+   private LocalDateTime updatedAt;
 
-@Column
-private String state;
+   @Column
+   private String companyName;
 
-@Column
-private String pincode;
-    @PrePersist
-    void onCreate() {
-        createdAt = LocalDateTime.now();
+   @Column
+   private String address;
 
-        if (role == null) {
-            role = Role.CUSTOMER;
-        }
-    }
+   @Column
+   private String city;
 
-    public UUID getId() {
-        return id;
-    }
+   @Column
+   private String state;
 
-    public String getName() {
-        return name;
-    }
+   @Column
+   private String pincode;
 
-    public void setName(String name) {
-        this.name = name;
-    }
+   @PrePersist
+   protected void onCreate() {
+       LocalDateTime now = LocalDateTime.now();
+       this.createdAt = now;
+       this.updatedAt = now;
+       if (this.role == null) {
+           this.role = Role.CUSTOMER;
+       }
+   }
 
-    public String getEmail() {
-        return email;
-    }
+   @PreUpdate
+   protected void onUpdate() {
+       this.updatedAt = LocalDateTime.now();
+   }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+   public UUID getId() {
+       return id;
+   }
 
-    public String getPassword() {
-        return password;
-    }
+   public String getName() {
+       return name;
+   }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+   public void setName(String name) {
+       this.name = name;
+   }
 
-    public String getPhone() {
-        return phone;
-    }
+   public String getEmail() {
+       return email;
+   }
 
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
+   public void setEmail(String email) {
+       this.email = email;
+   }
 
-    public Role getRole() {
-        return role;
-    }
+   public String getPassword() {
+       return password;
+   }
 
-    public void setRole(Role role) {
-        this.role = role;
-    }
+   public void setPassword(String password) {
+       this.password = password;
+   }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+   public String getPhone() {
+       return phone;
+   }
 
-    public String getCompanyName() {
-    return companyName;
-}
+   public void setPhone(String phone) {
+       this.phone = phone;
+   }
 
-public void setCompanyName(String companyName) {
-    this.companyName = companyName;
-}
+   public Role getRole() {
+       return role;
+   }
 
-public String getAddress() {
-    return address;
-}
+   public void setRole(Role role) {
+       this.role = role;
+   }
 
-public void setAddress(String address) {
-    this.address = address;
-}
+   public boolean isEnabled() {
+       return enabled;
+   }
 
-public String getCity() {
-    return city;
-}
+   public void setEnabled(boolean enabled) {
+       this.enabled = enabled;
+   }
 
-public void setCity(String city) {
-    this.city = city;
-}
+   public boolean isEmailVerified() {
+       return emailVerified;
+   }
 
-public String getState() {
-    return state;
-}
+   public void setEmailVerified(boolean emailVerified) {
+       this.emailVerified = emailVerified;
+   }
 
-public void setState(String state) {
-    this.state = state;
-}
+   public LocalDateTime getCreatedAt() {
+       return createdAt;
+   }
 
-public String getPincode() {
-    return pincode;
-}
+   public LocalDateTime getUpdatedAt() {
+       return updatedAt;
+   }
 
-public void setPincode(String pincode) {
-    this.pincode = pincode;
-}
+   public String getCompanyName() {
+       return companyName;
+   }
+
+   public void setCompanyName(String companyName) {
+       this.companyName = companyName;
+   }
+
+   public String getAddress() {
+       return address;
+   }
+
+   public void setAddress(String address) {
+       this.address = address;
+   }
+
+   public String getCity() {
+       return city;
+   }
+
+   public void setCity(String city) {
+       this.city = city;
+   }
+
+   public String getState() {
+       return state;
+   }
+
+   public void setState(String state) {
+       this.state = state;
+   }
+
+   public String getPincode() {
+       return pincode;
+   }
+
+   public void setPincode(String pincode) {
+       this.pincode = pincode;
+   }
 }

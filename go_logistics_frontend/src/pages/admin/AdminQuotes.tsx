@@ -1,14 +1,16 @@
 import {
   ArrowLeft,
   Check,
+  Clock3,
   FileText,
   Search,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { getAdminQuotes, updateAdminQuoteStatus } from "../../services/adminService";
 
-type QuoteStatus = "Pending" | "Approved" | "Rejected";
+type QuoteStatus = "Pending" | "Approved" | "Rejected" | "Expired";
 
 interface Quote {
   id: string;
@@ -25,71 +27,25 @@ interface Quote {
   status: QuoteStatus;
 }
 
-const initialQuotes: Quote[] = [
-  {
-    id: "QT10021",
-    customer: "Rahul Sharma",
-    email: "rahul@example.com",
-    origin: "Pune, Maharashtra",
-    destination: "Mumbai, Maharashtra",
-    cargo: "Commercial Goods",
-    weight: "850 kg",
-    containerSize: "20 ft",
-    requestedDate: "Aug 20, 2026",
-    requestedVehicle: "Container Truck",
-    amount: "",
-    status: "Pending",
-  },
-  {
-    id: "QT10020",
-    customer: "Amit Kumar",
-    email: "amit@example.com",
-    origin: "Mumbai, Maharashtra",
-    destination: "Nashik, Maharashtra",
-    cargo: "General Cargo",
-    weight: "620 kg",
-    containerSize: "17 ft",
-    requestedDate: "Aug 21, 2026",
-    requestedVehicle: "Truck",
-    amount: "₹22,000",
-    status: "Approved",
-  },
-  {
-    id: "QT10019",
-    customer: "Neha Singh",
-    email: "neha@example.com",
-    origin: "Pune, Maharashtra",
-    destination: "Nagpur, Maharashtra",
-    cargo: "Industrial Equipment",
-    weight: "1,200 kg",
-    containerSize: "32 ft",
-    requestedDate: "Aug 23, 2026",
-    requestedVehicle: "Container Truck",
-    amount: "",
-    status: "Pending",
-  },
-  {
-    id: "QT10018",
-    customer: "Vikas Patel",
-    email: "vikas@example.com",
-    origin: "Pune, Maharashtra",
-    destination: "Aurangabad, Maharashtra",
-    cargo: "Commercial Goods",
-    weight: "700 kg",
-    containerSize: "20 ft",
-    requestedDate: "Aug 24, 2026",
-    requestedVehicle: "Container Truck",
-    amount: "₹15,800",
-    status: "Approved",
-  },
-];
-
 export default function AdminQuotes() {
-  const [quotes, setQuotes] = useState(initialQuotes);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
-  const [selectedQuote, setSelectedQuote] =
-    useState<Quote | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadQuotes() {
+      try {
+        const data = await getAdminQuotes();
+        setQuotes(data);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load quotes");
+      }
+    }
+
+    void loadQuotes();
+  }, []);
 
   const filteredQuotes = useMemo(() => {
     const query = search.toLowerCase();
@@ -108,24 +64,35 @@ export default function AdminQuotes() {
     });
   }, [quotes, search, status]);
 
-  function updateQuoteStatus(
+  async function updateQuoteStatus(
     quoteId: string,
     newStatus: QuoteStatus,
     amount?: string
   ) {
-    setQuotes((currentQuotes) =>
-      currentQuotes.map((quote) =>
-        quote.id === quoteId
-          ? {
-              ...quote,
-              status: newStatus,
-              amount: amount ?? quote.amount,
-            }
-          : quote
-      )
-    );
+    try {
+      const payload: { status: QuoteStatus; amount?: string } = { status: newStatus };
+      if (amount && newStatus === "Approved") {
+        payload.amount = amount;
+      }
 
-    setSelectedQuote(null);
+      const refreshed = await updateAdminQuoteStatus(quoteId, payload);
+
+      setQuotes((currentQuotes) =>
+        currentQuotes.map((quote) =>
+          quote.id === quoteId
+            ? {
+                ...quote,
+                status: refreshed.status,
+                amount: refreshed.amount || quote.amount,
+              }
+            : quote
+        )
+      );
+      setSelectedQuote(null);
+      setError("");
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Unable to update quote status");
+    }
   }
 
   return (
@@ -153,6 +120,11 @@ export default function AdminQuotes() {
         <p className="mt-2 text-sm text-gray-500">
           Review customer requests and manage transportation quotes.
         </p>
+        {error && (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Filters */}
@@ -184,11 +156,11 @@ export default function AdminQuotes() {
             className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 md:w-48"
           >
             <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-          </select>
-        </div>
+           <option value="Pending">Pending</option>
+           <option value="Approved">Approved</option>
+           <option value="Rejected">Rejected</option>
+           <option value="Expired">Expired</option>
+          </select>        </div>
       </div>
 
       {/* Count */}
@@ -320,16 +292,22 @@ export default function AdminQuotes() {
           quote={selectedQuote}
           onClose={() => setSelectedQuote(null)}
           onApprove={(amount) =>
-            updateQuoteStatus(
+            void updateQuoteStatus(
               selectedQuote.id,
               "Approved",
               amount
             )
           }
           onReject={() =>
-            updateQuoteStatus(
+            void updateQuoteStatus(
               selectedQuote.id,
               "Rejected"
+            )
+          }
+          onExpire={() =>
+            void updateQuoteStatus(
+              selectedQuote.id,
+              "Expired"
             )
           }
         />
@@ -343,11 +321,13 @@ function QuoteModal({
   onClose,
   onApprove,
   onReject,
+  onExpire,
 }: {
   quote: Quote;
   onClose: () => void;
   onApprove: (amount: string) => void;
   onReject: () => void;
+  onExpire: () => void;
 }) {
   const [amount, setAmount] = useState(
     quote.amount.replace("₹", "")
@@ -494,6 +474,15 @@ function QuoteModal({
 
             <button
               type="button"
+              onClick={onExpire}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+            >
+              <Clock3 size={16} />
+              Expire Quote
+            </button>
+
+            <button
+              type="button"
               disabled={!amount}
               onClick={() => onApprove(`₹${amount}`)}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -533,8 +522,15 @@ function StatusBadge({
 }: {
   status: QuoteStatus;
 }) {
+  const colorMap: Record<QuoteStatus, string> = {
+    Pending: "bg-yellow-50 text-yellow-700",
+    Approved: "bg-green-50 text-green-700",
+    Rejected: "bg-red-50 text-red-700",
+    Expired: "bg-gray-200 text-gray-700",
+  };
+
   return (
-    <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${colorMap[status]}`}>
       {status}
     </span>
   );

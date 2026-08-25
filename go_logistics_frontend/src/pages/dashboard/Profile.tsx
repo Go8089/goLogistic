@@ -5,75 +5,83 @@ import type { CustomerProfile } from "../../services/customerService";
 
 
 export default function Profile() {
- const [profile, setProfile] = useState<CustomerProfile | null>(null); 
-
+ const [profile, setProfile] = useState<CustomerProfile | null>(null);
  const [saved, setSaved] = useState(false);
+ const [error, setError] = useState("");
+ const [isLoading, setIsLoading] = useState(true);
 
  const handleChange = (
-  event: React.ChangeEvent<HTMLInputElement>
-) => {
-  const { name, value } = event.target;
+   event: React.ChangeEvent<HTMLInputElement>
+ ) => {
+   const { name, value } = event.target;
 
-  setProfile((previous) => {
-    if (!previous) return previous;
+   setProfile((previous) => {
+     if (!previous) return previous;
 
-    return {
-      ...previous,
-      [name]: value,
-    };
-  });
+     return {
+       ...previous,
+       [name]: value,
+     };
+   });
 
-  setSaved(false);
-};
+   setSaved(false);
+   setError("");
+ };
 
-  const handleSubmit = async (
-  event: React.FormEvent<HTMLFormElement>
-) => {
-  event.preventDefault();
+ const handleSubmit = async (
+   event: React.FormEvent<HTMLFormElement>
+ ) => {
+   event.preventDefault();
 
-  if (!profile) return;
+   if (!profile) return;
 
-  try {
-    const updatedProfile =
-      await updateMyProfile(profile);
+   try {
+     setError("");
+     const updatedProfile = await updateMyProfile(profile);
+     setProfile(updatedProfile);
+     setSaved(true);
 
-    setProfile(updatedProfile);
-    setSaved(true);
+     setTimeout(() => {
+       setSaved(false);
+     }, 3000);
+   } catch (error) {
+     setError(
+       error instanceof Error
+         ? error.message
+         : "Unable to update profile."
+     );
+   }
+ };
 
-    setTimeout(() => {
-      setSaved(false);
-    }, 3000);
-  } catch (error) {
-    console.error(
-      "Failed to update profile:",
-      error
-    );
-  }
-};
-  
-useEffect(() => {
-  async function loadProfile() {
-    try {
-      const data = await getMyProfile();
-      setProfile(data);
-    } catch (error) {
-      console.error("Failed to load profile:", error);
-    }
-  }
+ useEffect(() => {
+   async function loadProfile() {
+     try {
+       setError("");
+       const data = await getMyProfile();
+       setProfile(data);
+     } catch (error) {
+       setError(
+         error instanceof Error
+           ? error.message
+           : "Failed to load profile."
+       );
+     } finally {
+       setIsLoading(false);
+     }
+   }
 
-  loadProfile();
-}, []);
+   loadProfile();
+ }, []);
 
-
-if (!profile) {
-  return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <p className="text-sm text-gray-500">
-        Loading profile...
-      </p>
-    </div>
-  );
-}
+ if (isLoading || !profile) {
+   return (
+     <div className="mx-auto max-w-5xl px-4 py-8">
+       <p className="text-sm text-gray-500">
+         {isLoading ? "Loading profile..." : "Profile unavailable."}
+       </p>
+     </div>
+   );
+ }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -91,6 +99,12 @@ if (!profile) {
           Manage your personal and company information.
         </p>
       </div>
+
+      {error && (
+        <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
 
       {/* Profile header */}
       <section className="mt-6 rounded-xl border border-gray-200 bg-white p-5 sm:p-6">

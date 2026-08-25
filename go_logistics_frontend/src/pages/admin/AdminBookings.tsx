@@ -1,11 +1,16 @@
 import { CalendarDays, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getAdminBookings } from "../../services/adminService";
 
 type BookingStatus =
+  | "Created"
+  | "Payment Pending"
   | "Confirmed"
-  | "Pending"
-  | "Cancelled"
-  | "Completed";
+  | "Assigned"
+  | "In Transit"
+  | "Delivered"
+  | "Completed"
+  | "Cancelled";
 
 interface Booking {
   id: string;
@@ -17,64 +22,55 @@ interface Booking {
   status: BookingStatus;
 }
 
-const bookings: Booking[] = [
-  {
-    id: "BK10001",
-    customer: "Rahul Sharma",
-    route: "Pune → Mumbai",
-    vehicle: "20 ft Truck",
-    bookingDate: "Aug 20, 2026",
-    amount: "₹18,500",
-    status: "Confirmed",
-  },
-  {
-    id: "BK10002",
-    customer: "Priya Enterprises",
-    route: "Pune → Nagpur",
-    vehicle: "32 ft Truck",
-    bookingDate: "Aug 22, 2026",
-    amount: "₹32,000",
-    status: "Pending",
-  },
-  {
-    id: "BK10003",
-    customer: "Amit Kumar",
-    route: "Mumbai → Pune",
-    vehicle: "14 ft Truck",
-    bookingDate: "Aug 18, 2026",
-    amount: "₹12,500",
-    status: "Completed",
-  },
-  {
-    id: "BK10004",
-    customer: "Shree Industries",
-    route: "Pune → Nashik",
-    vehicle: "20 ft Truck",
-    bookingDate: "Aug 15, 2026",
-    amount: "₹15,800",
-    status: "Cancelled",
-  },
-];
-
 export default function AdminBookings() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadBookings() {
+      try {
+        const data = await getAdminBookings();
+        setBookings(data);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load bookings");
+      }
+    }
+
+    void loadBookings();
+  }, []);
 
   const filteredBookings = useMemo(() => {
     const query = search.toLowerCase().trim();
 
     return bookings.filter((booking) => {
+      const normalizedStatus = normalizeBookingStatus(booking.status);
       const matchesSearch =
         booking.id.toLowerCase().includes(query) ||
         booking.customer.toLowerCase().includes(query) ||
         booking.route.toLowerCase().includes(query);
 
       const matchesStatus =
-        status === "All" || booking.status === status;
+        status === "All" || normalizedStatus === status;
 
       return matchesSearch && matchesStatus;
     });
-  }, [search, status]);
+  }, [search, status, bookings]);
+
+  function normalizeBookingStatus(label: string): BookingStatus {
+    const value = label.toUpperCase();
+
+    if (value.includes("PAYMENT")) return "Payment Pending";
+    if (value === "CREATED") return "Created";
+    if (value === "CONFIRMED") return "Confirmed";
+    if (value === "ASSIGNED") return "Assigned";
+    if (value === "IN_TRANSIT") return "In Transit";
+    if (value === "DELIVERED") return "Delivered";
+    if (value === "COMPLETED") return "Completed";
+    if (value === "CANCELLED") return "Cancelled";
+    return "Created";
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -91,6 +87,11 @@ export default function AdminBookings() {
         <p className="mt-2 text-sm text-gray-500">
           View and manage customer transportation bookings.
         </p>
+        {error && (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Filters */}
@@ -117,8 +118,12 @@ export default function AdminBookings() {
             className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 md:w-48"
           >
             <option value="All">All Statuses</option>
+            <option value="Created">Created</option>
+            <option value="Payment Pending">Payment Pending</option>
             <option value="Confirmed">Confirmed</option>
-            <option value="Pending">Pending</option>
+            <option value="Assigned">Assigned</option>
+            <option value="In Transit">In Transit</option>
+            <option value="Delivered">Delivered</option>
             <option value="Completed">Completed</option>
             <option value="Cancelled">Cancelled</option>
           </select>
@@ -292,8 +297,19 @@ function StatusBadge({
 }: {
   status: BookingStatus;
 }) {
+  const styles: Record<BookingStatus, string> = {
+    Created: "bg-gray-100 text-gray-700",
+    "Payment Pending": "bg-yellow-50 text-yellow-700",
+    Confirmed: "bg-blue-50 text-blue-700",
+    Assigned: "bg-purple-50 text-purple-700",
+    "In Transit": "bg-indigo-50 text-indigo-700",
+    Delivered: "bg-green-50 text-green-700",
+    Completed: "bg-emerald-50 text-emerald-700",
+    Cancelled: "bg-red-50 text-red-700",
+  };
+
   return (
-    <span className="inline-flex whitespace-nowrap rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${styles[status]}`}>
       {status}
     </span>
   );

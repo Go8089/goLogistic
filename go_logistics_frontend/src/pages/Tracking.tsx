@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SubmitEvent } from "react";
 import {
   CheckCircle2,
   Clock3,
   MapPin,
   Package,
+  ShieldAlert,
   Truck,
 } from "lucide-react";
+
+import { Link } from "react-router-dom";
 
 import PageHeader from "../components/PageHeader";
 import Input from "../components/Input";
@@ -21,16 +24,6 @@ interface Shipment {
   vehicle: string;
   lastUpdate: string;
 }
-
-const demoShipment: Shipment = {
-  trackingId: "TRK10001",
-  status: "IN_TRANSIT",
-  origin: "Pune, Maharashtra",
-  destination: "Mumbai, Maharashtra",
-  estimatedDelivery: "August 22, 2026",
-  vehicle: "Medium Cargo Truck",
-  lastUpdate: "Shipment departed from Pune",
-};
 
 const statusSteps = [
   {
@@ -59,6 +52,18 @@ export default function Tracking() {
   const [trackingId, setTrackingId] = useState("");
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const syncAuthState = () => {
+      setIsAuthenticated(Boolean(localStorage.getItem("token")));
+    };
+
+    syncAuthState();
+    window.addEventListener("storage", syncAuthState);
+
+    return () => window.removeEventListener("storage", syncAuthState);
+  }, []);
 
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -71,15 +76,47 @@ export default function Tracking() {
       return;
     }
 
-    if (normalizedId === demoShipment.trackingId) {
-      setShipment(demoShipment);
-      setNotFound(false);
-      return;
-    }
-
     setShipment(null);
     setNotFound(true);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-gray-50">
+        <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="rounded-2xl border border-amber-200 bg-white p-8 shadow-sm sm:p-10">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+              <ShieldAlert size={28} />
+            </div>
+
+            <h1 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">
+              Login required to track shipments
+            </h1>
+
+            <p className="mt-4 text-base leading-7 text-gray-600">
+              Please register or log in to access your shipment tracking and logistics account details.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                Customer Login
+              </Link>
+
+              <Link
+                to="/register"
+                className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+              >
+                Register Now
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -101,7 +138,7 @@ export default function Tracking() {
                 <Input
                   label="Tracking ID"
                   name="trackingId"
-                  placeholder="e.g. TRK10001"
+                  placeholder="Enter your tracking ID"
                   value={trackingId}
                   onChange={(value) => {
                     setTrackingId(value);
@@ -116,12 +153,6 @@ export default function Tracking() {
               </Button>
             </div>
 
-            <p className="mt-4 text-xs text-gray-500">
-              Demo tracking ID:{" "}
-              <span className="font-semibold text-gray-700">
-                TRK10001
-              </span>
-            </p>
           </form>
 
           {/* Not found */}

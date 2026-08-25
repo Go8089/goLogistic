@@ -4,6 +4,7 @@ import {
   MapPin,
   Truck,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import Button from "../components/Button";
@@ -39,6 +40,31 @@ const benefits = [
 ];
 
 export default function Home() {
+  const [user, setUser] = useState<{ role?: string; name?: string } | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+
+    if (!token || !storedUser) {
+      setUser(null);
+      return;
+    }
+
+    try {
+      const parsedUser = JSON.parse(storedUser) as { role?: string; name?: string };
+      setUser(parsedUser);
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(null);
+    }
+  }, []);
+
+  const isLoggedIn = Boolean(user);
+  const dashboardPath = user?.role === "ADMIN" ? "/admin" : "/dashboard";
+  const dashboardLabel = user?.role === "ADMIN" ? "Open Admin Dashboard" : "Go to Dashboard";
+
   return (
     <>
       {/* Hero */}
@@ -69,6 +95,40 @@ export default function Home() {
                 Track Shipment
               </Button>
             </div>
+
+            {!isLoggedIn ? (
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+                >
+                  Login
+                </Link>
+
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Register
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Link
+                  to={dashboardPath}
+                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  {dashboardLabel}
+                </Link>
+
+                <Link
+                  to="/quote"
+                  className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+                >
+                  Book a Shipment
+                </Link>
+              </div>
+            )}
 
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3">
               <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -287,26 +347,58 @@ export default function Home() {
 
       {/* Final CTA */}
       <section className="bg-gray-900">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-16 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-widest text-blue-400">
-              Get Started
-            </p>
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20 sm:p-8 lg:p-10">
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-sm font-semibold uppercase tracking-widest text-blue-400">
+                  Get Started
+                </p>
 
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              Ready to move your cargo?
-            </h2>
+                <h2 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                  Ready to move your cargo?
+                </h2>
 
-            <p className="mt-2 max-w-xl text-sm leading-6 text-gray-400">
-              Tell us about your transportation requirement and we'll help
-              you find a suitable road transportation solution.
-            </p>
+                <p className="mt-3 text-sm leading-6 text-gray-300">
+                  Registration and login are required to book shipments, track cargo, and manage your road transport services with GoLogistic.
+                </p>
+              </div>
+
+              {isLoggedIn ? (
+                <div className="grid w-full max-w-xl gap-3 sm:grid-cols-2">
+                  <Link
+                    to={dashboardPath}
+                    className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+                  >
+                    {dashboardLabel}
+                  </Link>
+
+                  <Link
+                    to="/quote"
+                    className="inline-flex items-center justify-center rounded-xl border border-gray-600 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:border-blue-400 hover:bg-blue-500/10"
+                  >
+                    Book Shipment
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid w-full max-w-xl gap-3 sm:grid-cols-2">
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center justify-center rounded-xl border border-gray-600 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:border-blue-400 hover:bg-blue-500/10"
+                  >
+                    Customer Login
+                  </Link>
+
+                  <Link
+                    to="/register"
+                    className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+                  >
+                    Register
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
-
-          <Button to="/quote">
-            Get a Quote
-            <ArrowRight size={17} />
-          </Button>
         </div>
       </section>
     </>

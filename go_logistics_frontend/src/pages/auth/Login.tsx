@@ -107,12 +107,12 @@ export default function Login() {
                     Password
                   </label>
 
-                  <button
-                    type="button"
+                  <Link
+                    to="/forgot-password"
                     className="text-xs font-medium text-blue-600 hover:text-blue-700"
                   >
                     Forgot password?
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="relative mt-2">

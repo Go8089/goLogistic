@@ -3,13 +3,15 @@ import {
   Search,
   Eye,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getAdminPayments } from "../../services/adminService";
 
 type PaymentStatus =
-  | "Paid"
+  | "Success"
   | "Pending"
   | "Failed"
-  | "Refunded";
+  | "Refunded"
+  | "Paid";
 
 interface Payment {
   id: string;
@@ -22,66 +24,29 @@ interface Payment {
   status: PaymentStatus;
 }
 
-const payments: Payment[] = [
-  {
-    id: "PAY10001",
-    quoteId: "QT10001",
-    customer: "Gopal Kumar Jha",
-    email: "gopal@example.com",
-    amount: 18000,
-    method: "UPI",
-    date: "Aug 20, 2026",
-    status: "Paid",
-  },
-  {
-    id: "PAY10002",
-    quoteId: "QT10002",
-    customer: "Rahul Sharma",
-    email: "rahul@example.com",
-    amount: 32000,
-    method: "Credit Card",
-    date: "Aug 21, 2026",
-    status: "Pending",
-  },
-  {
-    id: "PAY10003",
-    quoteId: "QT10003",
-    customer: "Amit Verma",
-    email: "amit@example.com",
-    amount: 12500,
-    method: "Net Banking",
-    date: "Aug 18, 2026",
-    status: "Paid",
-  },
-  {
-    id: "PAY10004",
-    quoteId: "QT10004",
-    customer: "Priya Singh",
-    email: "priya@example.com",
-    amount: 15800,
-    method: "UPI",
-    date: "Aug 17, 2026",
-    status: "Failed",
-  },
-  {
-    id: "PAY10005",
-    quoteId: "QT10005",
-    customer: "Vikash Kumar",
-    email: "vikash@example.com",
-    amount: 22000,
-    method: "Credit Card",
-    date: "Aug 15, 2026",
-    status: "Refunded",
-  },
-];
-
 export default function AdminPayments() {
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadPayments() {
+      try {
+        const data = await getAdminPayments();
+        setPayments(data);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load payments");
+      }
+    }
+
+    void loadPayments();
+  }, []);
 
   const filteredPayments = useMemo(() => {
     return payments.filter((payment) => {
       const query = search.toLowerCase();
+      const normalizedStatus = normalizePaymentStatus(payment.status);
 
       const matchesSearch =
         payment.id.toLowerCase().includes(query) ||
@@ -91,25 +56,47 @@ export default function AdminPayments() {
 
       const matchesStatus =
         status === "All" ||
-        payment.status === status;
+        normalizedStatus === status;
 
       return matchesSearch && matchesStatus;
     });
-  }, [search, status]);
+  }, [search, status, payments]);
 
   const totalRevenue = payments
-    .filter((payment) => payment.status === "Paid")
+    .filter((payment) => normalizePaymentStatus(payment.status) === "Success")
     .reduce(
       (total, payment) => total + payment.amount,
       0
     );
 
   const pendingAmount = payments
-    .filter((payment) => payment.status === "Pending")
+    .filter((payment) => normalizePaymentStatus(payment.status) === "Pending")
     .reduce(
       (total, payment) => total + payment.amount,
       0
     );
+
+  function normalizePaymentStatus(status: string): PaymentStatus {
+    const value = status.toUpperCase();
+
+    if (value === "SUCCESS" || value === "PAID") {
+      return "Success";
+    }
+
+    if (value === "PENDING") {
+      return "Pending";
+    }
+
+    if (value === "FAILED") {
+      return "Failed";
+    }
+
+    if (value === "REFUNDED") {
+      return "Refunded";
+    }
+
+    return "Pending";
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -127,6 +114,11 @@ export default function AdminPayments() {
         <p className="mt-2 text-sm text-gray-500">
           View and manage customer payment transactions.
         </p>
+        {error && (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Summary */}
@@ -135,7 +127,7 @@ export default function AdminPayments() {
         <SummaryCard
           title="Total Revenue"
           value={`₹${totalRevenue.toLocaleString("en-IN")}`}
-          description="Successfully paid"
+          description="Successful payments"
         />
 
         <SummaryCard
@@ -181,7 +173,7 @@ export default function AdminPayments() {
             className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 md:w-48"
           >
             <option value="All">All Statuses</option>
-            <option value="Paid">Paid</option>
+            <option value="Success">Success</option>
             <option value="Pending">Pending</option>
             <option value="Failed">Failed</option>
             <option value="Refunded">Refunded</option>
@@ -279,7 +271,7 @@ export default function AdminPayments() {
                     </td>
 
                     <td className="px-6 py-5">
-                      <StatusBadge status={payment.status} />
+                      <StatusBadge status={normalizePaymentStatus(payment.status)} />
                     </td>
 
                     <td className="px-6 py-5 text-right">
@@ -351,17 +343,26 @@ function StatusBadge({
   status: PaymentStatus;
 }) {
   const styles = {
-    Paid: "bg-green-50 text-green-700",
+    Success: "bg-green-50 text-green-700",
     Pending: "bg-yellow-50 text-yellow-700",
     Failed: "bg-red-50 text-red-700",
     Refunded: "bg-gray-100 text-gray-700",
+    Paid: "bg-green-50 text-green-700",
+  };
+
+  const labels = {
+    Success: "Success",
+    Pending: "Pending",
+    Failed: "Failed",
+    Refunded: "Refunded",
+    Paid: "Paid",
   };
 
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${styles[status]}`}
+      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${styles[status] ?? "bg-gray-100 text-gray-700"}`}
     >
-      {status}
+      {labels[status] ?? status}
     </span>
   );
 }

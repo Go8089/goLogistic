@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Menu,
   X,
   Truck,
 } from "lucide-react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 const navigation = [
   { name: "Home", to: "/" },
@@ -17,6 +17,36 @@ const navigation = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState<{ role?: string; name?: string } | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+
+    if (!token || !storedUser) {
+      setUser(null);
+      return;
+    }
+
+    try {
+      setUser(JSON.parse(storedUser));
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(null);
+    }
+  }, []);
+
+  const dashboardPath = user?.role === "ADMIN" ? "/admin" : "/dashboard";
+  const dashboardLabel = user?.role === "ADMIN" ? "Admin Dashboard" : "Dashboard";
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    navigate("/");
+  };
 
   const closeMobileMenu = () => {
     setMobileOpen(false);
@@ -52,7 +82,42 @@ export default function Navbar() {
         </nav>
 
         {/* Desktop CTA */}
-        <div className="hidden lg:block">
+        <div className="hidden items-center gap-3 lg:flex">
+          {user ? (
+            <>
+              <Link
+                to={dashboardPath}
+                className="inline-flex items-center rounded-lg border border-blue-600 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+              >
+                {dashboardLabel}
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+              >
+                Login
+              </Link>
+
+              <Link
+                to="/register"
+                className="inline-flex items-center rounded-lg border border-blue-600 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                Register
+              </Link>
+            </>
+          )}
+
           <Link
             to="/quote"
             className="inline-flex items-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
@@ -100,10 +165,51 @@ export default function Navbar() {
               ))}
             </div>
 
+            {user ? (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <Link
+                  to={dashboardPath}
+                  onClick={closeMobileMenu}
+                  className="flex w-full items-center justify-center rounded-lg border border-blue-600 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                >
+                  {dashboardLabel}
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleLogout();
+                    closeMobileMenu();
+                  }}
+                  className="flex w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <Link
+                  to="/login"
+                  onClick={closeMobileMenu}
+                  className="flex w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+                >
+                  Login
+                </Link>
+
+                <Link
+                  to="/register"
+                  onClick={closeMobileMenu}
+                  className="flex w-full items-center justify-center rounded-lg border border-blue-600 bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Register
+                </Link>
+              </div>
+            )}
+
             <Link
               to="/quote"
               onClick={closeMobileMenu}
-              className="mt-4 flex w-full items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+              className="mt-3 flex w-full items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
               Get a Quote
             </Link>

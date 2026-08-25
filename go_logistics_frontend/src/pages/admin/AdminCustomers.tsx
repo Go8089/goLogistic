@@ -1,5 +1,6 @@
 import { Search, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getAdminCustomers, updateAdminCustomerStatus } from "../../services/adminService";
 
 type CustomerStatus = "Active" | "Inactive";
 
@@ -13,57 +14,24 @@ interface Customer {
   status: CustomerStatus;
 }
 
-const customers: Customer[] = [
-  {
-    id: "CUS10001",
-    name: "Rahul Sharma",
-    email: "rahul.sharma@example.com",
-    phone: "+91 98765 43210",
-    shipments: 12,
-    joinedDate: "Aug 02, 2026",
-    status: "Active",
-  },
-  {
-    id: "CUS10002",
-    name: "Priya Enterprises",
-    email: "contact@priyaenterprises.com",
-    phone: "+91 98220 12345",
-    shipments: 8,
-    joinedDate: "Aug 05, 2026",
-    status: "Active",
-  },
-  {
-    id: "CUS10003",
-    name: "Amit Kumar",
-    email: "amit.kumar@example.com",
-    phone: "+91 97654 67890",
-    shipments: 5,
-    joinedDate: "Aug 08, 2026",
-    status: "Active",
-  },
-  {
-    id: "CUS10004",
-    name: "Shree Industries",
-    email: "admin@shreeindustries.com",
-    phone: "+91 98123 45678",
-    shipments: 3,
-    joinedDate: "Aug 10, 2026",
-    status: "Inactive",
-  },
-  {
-    id: "CUS10005",
-    name: "Neha Logistics",
-    email: "neha.logistics@example.com",
-    phone: "+91 98989 11223",
-    shipments: 17,
-    joinedDate: "Aug 12, 2026",
-    status: "Active",
-  },
-];
-
 export default function AdminCustomers() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadCustomers() {
+      try {
+        const data = await getAdminCustomers();
+        setCustomers(data);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load customers");
+      }
+    }
+
+    void loadCustomers();
+  }, []);
 
   const filteredCustomers = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -82,6 +50,22 @@ export default function AdminCustomers() {
     });
   }, [search, status]);
 
+  const handleCustomerStatusChange = async (customerId: string, nextStatus: CustomerStatus) => {
+    try {
+      const updated = await updateAdminCustomerStatus(customerId, nextStatus);
+      setCustomers((current) =>
+        current.map((customer) =>
+          customer.id === customerId
+            ? { ...customer, status: updated.status === "Active" ? "Active" : "Inactive" }
+            : customer
+        )
+      );
+      setError("");
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Unable to update customer status");
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       {/* Heading */}
@@ -97,6 +81,11 @@ export default function AdminCustomers() {
         <p className="mt-2 text-sm text-gray-500">
           View and manage registered customers.
         </p>
+        {error && (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Filters */}
@@ -204,8 +193,17 @@ export default function AdminCustomers() {
                     </td>
 
                     <td className="px-6 py-5">
-                      <StatusBadge status={customer.status} />
-                    </td>
+                     <div className="flex items-center gap-3">
+                       <StatusBadge status={customer.status} />
+                       <button
+                         type="button"
+                         onClick={() => void handleCustomerStatusChange(customer.id, customer.status === "Active" ? "Inactive" : "Active")}
+                         className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                       >
+                         {customer.status === "Active" ? "Deactivate" : "Activate"}
+                       </button>
+                     </div>
+                   </td>
                   </tr>
                 ))}
               </tbody>
@@ -236,6 +234,16 @@ export default function AdminCustomers() {
                 </div>
 
                 <StatusBadge status={customer.status} />
+              </div>
+
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => void handleCustomerStatusChange(customer.id, customer.status === "Active" ? "Inactive" : "Active")}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                >
+                  {customer.status === "Active" ? "Deactivate Account" : "Activate Account"}
+                </button>
               </div>
 
               <div className="mt-5 space-y-3">

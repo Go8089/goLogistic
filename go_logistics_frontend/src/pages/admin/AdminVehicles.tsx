@@ -1,5 +1,6 @@
 import { Search, Truck } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getAdminVehicles } from "../../services/adminService";
 
 type VehicleStatus = "Available" | "Assigned" | "Maintenance";
 
@@ -13,57 +14,24 @@ interface Vehicle {
   status: VehicleStatus;
 }
 
-const vehicles: Vehicle[] = [
-  {
-    id: "VH10001",
-    registrationNumber: "MH12 AB 1234",
-    vehicleType: "Truck",
-    containerSize: "20 ft",
-    capacity: "7 Ton",
-    driver: "Rajesh Kumar",
-    status: "Assigned",
-  },
-  {
-    id: "VH10002",
-    registrationNumber: "MH12 CD 5678",
-    vehicleType: "Truck",
-    containerSize: "32 ft",
-    capacity: "15 Ton",
-    driver: "Amit Singh",
-    status: "Available",
-  },
-  {
-    id: "VH10003",
-    registrationNumber: "MH12 EF 9012",
-    vehicleType: "Container Truck",
-    containerSize: "24 ft",
-    capacity: "10 Ton",
-    driver: "Suresh Patil",
-    status: "Assigned",
-  },
-  {
-    id: "VH10004",
-    registrationNumber: "MH12 GH 3456",
-    vehicleType: "Mini Truck",
-    containerSize: "14 ft",
-    capacity: "4 Ton",
-    driver: "Vikas Sharma",
-    status: "Available",
-  },
-  {
-    id: "VH10005",
-    registrationNumber: "MH12 JK 7890",
-    vehicleType: "Container Truck",
-    containerSize: "32 ft",
-    capacity: "15 Ton",
-    driver: "Not Assigned",
-    status: "Maintenance",
-  },
-];
-
 export default function AdminVehicles() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadVehicles() {
+      try {
+        const data = await getAdminVehicles();
+        setVehicles(data);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load vehicles");
+      }
+    }
+
+    void loadVehicles();
+  }, []);
 
   const filteredVehicles = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -99,6 +67,11 @@ export default function AdminVehicles() {
         <p className="mt-2 text-sm text-gray-500">
           Manage vehicles, container sizes, capacity and assignments.
         </p>
+        {error && (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Filters */}

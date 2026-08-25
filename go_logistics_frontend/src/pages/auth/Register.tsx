@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Truck } from "lucide-react";
-import { register } from "../../services/authService";
-
+import { register, sendRegistrationOtp, type OtpChannel } from "../../services/authService";
 
 export default function Register() {
   const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpChannel, setOtpChannel] = useState<OtpChannel>("EMAIL");
+  const [otp, setOtp] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -19,9 +20,11 @@ export default function Register() {
     confirmPassword: "",
   });
 
-  function handleChange(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function handleChange(event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = event.target;
 
     setForm((current) => ({
@@ -30,207 +33,179 @@ export default function Register() {
     }));
   }
 
- const [error, setError] = useState("");
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
 
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
 
-const handleSubmit = async (
-  event: React.FormEvent
-) => {
-  event.preventDefault();
+    setIsSubmitting(true);
 
-  if (form.password !== form.confirmPassword) {
-    setError("Passwords do not match");
-    return;
-  }
+    try {
+      if (!otpSent) {
+        await sendRegistrationOtp({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          phone: form.phone,
+          otpChannel,
+        });
 
-  try {
-    await register({
-      name: form.name,
-      email: form.email,
-      password: form.password,
-      phone: form.phone,
-    });
+        setOtpSent(true);
+        setSuccess(`An OTP has been sent to your ${otpChannel === "EMAIL" ? "email" : "mobile number"}.`);
+        return;
+      }
 
-    navigate("/login");
-  } catch (error) {
-    setError(
-      error instanceof Error
-        ? error.message
-        : "Registration failed"
-    );
-  }
-};
+      await register({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        otpChannel,
+        otp: otp.trim(),
+      });
+
+      navigate("/login");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Registration failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex min-h-screen items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
-          {/* Brand */}
           <div className="mb-8 text-center">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2"
-            >
+            <Link to="/" className="inline-flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
                 <Truck size={21} />
               </div>
-
-              <span className="text-xl font-bold text-gray-900">
-                TransportCo
-              </span>
+              <span className="text-xl font-bold text-gray-900">TransportCo</span>
             </Link>
 
             <h1 className="mt-8 text-2xl font-bold text-gray-900">
-              Create your account
+              {otpSent ? "Verify your account" : "Create your account"}
             </h1>
 
             <p className="mt-2 text-sm text-gray-500">
-              Register to book and track road transportation.
+              {otpSent
+                ? `Enter the six-digit OTP sent to your ${otpChannel === "EMAIL" ? "email" : "mobile number"}.`
+                : "Register to book and track road transportation."}
             </p>
           </div>
 
-          {/* Form */}
           <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-            {error && (
-             <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-              {error}
-            </p>
-            )}
+            {error && <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>}
+            {success && <p className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{success}</p>}
 
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-4"
-            >
-              <Field
-                label="Full name"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Your full name"
-              />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {!otpSent && (
+                <>
+                  <Field label="Full name" name="name" value={form.name} onChange={handleChange} placeholder="Your full name" />
+                  <Field label="Email address" name="email" type="email" value={form.email} onChange={handleChange} placeholder="you@example.com" />
+                  <Field label="Phone number" name="phone" type="tel" value={form.phone} onChange={handleChange} placeholder="+91 98765 43210" />
 
-              <Field
-                label="Email address"
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="you@example.com"
-              />
+                  <div>
+                    <label htmlFor="otpChannel" className="text-sm font-medium text-gray-700">
+                      OTP delivery method
+                    </label>
+                    <select
+                      id="otpChannel"
+                      value={otpChannel}
+                      onChange={(event) => setOtpChannel(event.target.value as OtpChannel)}
+                      className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    >
+                      <option value="EMAIL">Email</option>
+                      <option value="PHONE">Mobile number</option>
+                    </select>
+                  </div>
 
-              <Field
-                label="Phone number"
-                name="phone"
-                type="tel"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder="10-digit mobile number"
-              />
+                  <div>
+                    <label htmlFor="password" className="text-sm font-medium text-gray-700">Password</label>
+                    <div className="relative mt-2">
+                      <input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={form.password}
+                        onChange={handleChange}
+                        placeholder="Create a password"
+                        required
+                        minLength={8}
+                        className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-11 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                      />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((value) => !value)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        >
+                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
+                  </div>
 
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Password
-                </label>
+                  <div>
+                    <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">Confirm password</label>
+                    <div className="relative mt-2">
+                      <input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={form.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="Confirm your password"
+                        required
+                        minLength={8}
+                        className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-11 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                      />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword((value) => !value)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        >
+                          {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
+                  </div>
+                </>
+              )}
 
-                <div className="relative mt-2">
+              {otpSent && (
+                <div>
+                  <label htmlFor="otp" className="text-sm font-medium text-gray-700">OTP</label>
                   <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={form.password}
-                    onChange={handleChange}
-                    placeholder="Create a password"
+                    id="otp"
+                    type="text"
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value)}
+                    placeholder="123456"
                     required
-                    minLength={8}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-11 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                   />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPassword((value) => !value)
-                    }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  >
-                    {showPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
-                  </button>
                 </div>
-              </div>
-
-              {/* Confirm password */}
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Confirm password
-                </label>
-
-                <div className="relative mt-2">
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={
-                      showConfirmPassword
-                        ? "text"
-                        : "password"
-                    }
-                    value={form.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Confirm your password"
-                    required
-                    minLength={8}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-11 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowConfirmPassword(
-                        (value) => !value
-                      )
-                    }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
-                  </button>
-                </div>
-              </div>
+              )}
 
               <button
                 type="submit"
-                className="mt-2 w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                disabled={isSubmitting}
+                className="mt-2 w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
               >
-                Create Account
+                {isSubmitting ? (otpSent ? "Verifying..." : "Sending OTP...") : otpSent ? "Complete registration" : "Send OTP"}
               </button>
             </form>
 
             <p className="mt-6 text-center text-sm text-gray-500">
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                className="font-semibold text-blue-600 hover:text-blue-700"
-              >
-                Sign in
-              </Link>
+              Already have an account? <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700">Sign in</Link>
             </p>
           </div>
 
-          <p className="mt-6 text-center text-xs text-gray-400">
-            Road transportation services
-          </p>
+          <p className="mt-6 text-center text-xs text-gray-400">Road transportation services</p>
         </div>
       </div>
     </div>
@@ -248,21 +223,13 @@ function Field({
   label: string;
   name: string;
   value: string;
-  onChange: (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => void;
+  onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   placeholder: string;
   type?: string;
 }) {
   return (
     <div>
-      <label
-        htmlFor={name}
-        className="text-sm font-medium text-gray-700"
-      >
-        {label}
-      </label>
-
+      <label htmlFor={name} className="text-sm font-medium text-gray-700">{label}</label>
       <input
         id={name}
         name={name}
@@ -271,7 +238,7 @@ function Field({
         onChange={onChange}
         placeholder={placeholder}
         required
-        className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+        className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
       />
     </div>
   );

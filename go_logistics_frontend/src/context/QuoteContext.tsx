@@ -30,71 +30,20 @@ export interface Quote {
 
 interface QuoteContextType {
   quotes: Quote[];
-  updateQuoteStatus: (
-    id: string,
-    status: QuoteStatus
-  ) => void;
+  updateQuoteStatus: (id: string, status: QuoteStatus) => void;
 }
 
-const initialQuotes: Quote[] = [
-  {
-    id: "QT10001",
-    status: "Approved",
-    pickupLocation: "Pune, Maharashtra",
-    deliveryLocation: "Mumbai, Maharashtra",
-    cargoType: "Commercial Goods",
-    weight: "850 kg",
-    vehicleCategory: "Heavy Truck",
-    bodyType: "Container",
-    containerSize: "32 ft",
-    pickupDate: "25 Aug 2026",
-    validUntil: "24 Aug 2026",
-    transportationCharge: 15000,
-    handlingCharge: 1000,
-    tollCharge: 1500,
-    otherCharges: 500,
-  },
+const initialQuotes: Quote[] = [];
 
-  {
-    id: "QT10002",
-    status: "Pending",
-    pickupLocation: "Pune, Maharashtra",
-    deliveryLocation: "Nagpur, Maharashtra",
-    cargoType: "Industrial Equipment",
-    weight: "1,200 kg",
-    vehicleCategory: "Heavy Truck",
-    bodyType: "Container",
-    containerSize: "32 ft",
-    pickupDate: "27 Aug 2026",
-    validUntil: "26 Aug 2026",
-    transportationCharge: 26000,
-    handlingCharge: 1500,
-    tollCharge: 3000,
-    otherCharges: 1000,
-  },
-];
+const QuoteContext = createContext<QuoteContextType | undefined>(undefined);
 
-const QuoteContext = createContext<
-  QuoteContextType | undefined
->(undefined);
+export function QuoteProvider({ children }: { children: ReactNode }) {
+  const [quotes, setQuotes] = useState<Quote[]>(initialQuotes);
 
-export function QuoteProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [quotes, setQuotes] =
-    useState<Quote[]>(initialQuotes);
-
-  function updateQuoteStatus(
-    id: string,
-    status: QuoteStatus
-  ) {
+  function updateQuoteStatus(id: string, status: QuoteStatus) {
     setQuotes((current) =>
       current.map((quote) =>
-        quote.id === id
-          ? { ...quote, status }
-          : quote
+        quote.id === id ? { ...quote, status } : quote
       )
     );
   }
@@ -115,9 +64,7 @@ export function useQuotes() {
   const context = useContext(QuoteContext);
 
   if (!context) {
-    throw new Error(
-      "useQuotes must be used inside QuoteProvider"
-    );
+    throw new Error("useQuotes must be used inside QuoteProvider");
   }
 
   return context;
