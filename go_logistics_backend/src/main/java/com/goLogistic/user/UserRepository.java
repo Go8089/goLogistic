@@ -9,11 +9,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmailIgnoreCase(String email);
 
-<<<<<<< HEAD
-    boolean existsByEmail(String email);
-
-    Optional<User> findByPhone(String phone);
-=======
     Optional<User> findByPhone(String phone);
 
     boolean existsByEmailIgnoreCase(String email);
@@ -21,5 +16,4 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     default boolean existsByEmail(String email) {
         return existsByEmailIgnoreCase(email);
     }
->>>>>>> agents/help-me-fix-describe-the-bug-in-this
 }

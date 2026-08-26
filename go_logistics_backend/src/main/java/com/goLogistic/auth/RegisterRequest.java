@@ -19,13 +19,6 @@ public record RegisterRequest(
     String password,
 
     @NotBlank(message = "Phone is required")
-<<<<<<< HEAD
-    @Pattern(
-        regexp = "^\\+91[6-9]\\d{9}$",
-        message = "Enter a valid Indian mobile number"
-    )
-    String phone
-=======
     String phone,
 
     @NotBlank(message = "OTP delivery channel is required")
@@ -34,6 +27,5 @@ public record RegisterRequest(
     @NotBlank(message = "OTP is required")
     @Pattern(regexp = "^[0-9]{6}$", message = "OTP must be a 6-digit number")
     String otp
->>>>>>> agents/help-me-fix-describe-the-bug-in-this
 ) {
 }

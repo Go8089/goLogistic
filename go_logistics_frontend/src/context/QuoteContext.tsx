@@ -33,7 +33,6 @@ export interface Quote {
 
 interface QuoteContextType {
   quotes: Quote[];
-<<<<<<< HEAD
   loading: boolean;
   error: string;
   updateQuoteStatus: (
@@ -128,24 +127,6 @@ export function QuoteProvider({
 
       throw error;
     }
-=======
-  updateQuoteStatus: (id: string, status: QuoteStatus) => void;
-}
-
-const initialQuotes: Quote[] = [];
-
-const QuoteContext = createContext<QuoteContextType | undefined>(undefined);
-
-export function QuoteProvider({ children }: { children: ReactNode }) {
-  const [quotes, setQuotes] = useState<Quote[]>(initialQuotes);
-
-  function updateQuoteStatus(id: string, status: QuoteStatus) {
-    setQuotes((current) =>
-      current.map((quote) =>
-        quote.id === id ? { ...quote, status } : quote
-      )
-    );
->>>>>>> agents/help-me-fix-describe-the-bug-in-this
   }
 
   return (

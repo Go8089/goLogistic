@@ -47,22 +47,8 @@ public class User {
    @Column
    private String companyName;
 
-<<<<<<< HEAD
-@Column
-private String pincode;
-
-@Column(nullable = false)
-private boolean emailVerified = false;
-
-@Column(nullable = false)
-private boolean phoneVerified = false;
-    @PrePersist
-    void onCreate() {
-        createdAt = LocalDateTime.now();
-=======
    @Column
    private String address;
->>>>>>> agents/help-me-fix-describe-the-bug-in-this
 
    @Column
    private String city;
@@ -156,27 +142,6 @@ private boolean phoneVerified = false;
        return updatedAt;
    }
 
-<<<<<<< HEAD
-public void setPincode(String pincode) {
-    this.pincode = pincode;
-}
-
-public boolean isEmailVerified() {
-    return emailVerified;
-}
-
-public void setEmailVerified(boolean emailVerified) {
-    this.emailVerified = emailVerified;
-}
-
-public boolean isPhoneVerified() {
-    return phoneVerified;
-}
-
-public void setPhoneVerified(boolean phoneVerified) {
-    this.phoneVerified = phoneVerified;
-}
-=======
    public String getCompanyName() {
        return companyName;
    }
@@ -216,5 +181,4 @@ public void setPhoneVerified(boolean phoneVerified) {
    public void setPincode(String pincode) {
        this.pincode = pincode;
    }
->>>>>>> agents/help-me-fix-describe-the-bug-in-this
 }

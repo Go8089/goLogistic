@@ -25,11 +25,8 @@ import VerifyPhone from "./pages/auth/VerifyPhone";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import VerifyResetOtp from "./pages/auth/VerifyResetOtp";
 import ResetPassword from "./pages/auth/ResetPassword";
-<<<<<<< HEAD
 // Customer Dashboard
-=======
 
->>>>>>> agents/help-me-fix-describe-the-bug-in-this
 import Dashboard from "./pages/dashboard/Dashboard";
 import Shipments from "./pages/dashboard/Shipments";
 import ShipmentDetails from "./pages/dashboard/ShipmentDetails";
@@ -85,42 +82,6 @@ export default function App() {
   <Route path="/reset-password" element={<ResetPassword />} />
   <Route path="/admin/login" element={<AdminLogin />} />
 
-<<<<<<< HEAD
-      <Route
-        path="/register"
-        element={<Register />}
-      />
-      <Route
-        path="/verify-email"
-        element={<VerifyEmail />}
-      />
-      <Route
-        path="/verify-phone"
-        element={<VerifyPhone />}
-      />
-      <Route
-  path="/forgot-password"
-  element={<ForgotPassword />}
-/>
-
-<Route
-  path="/verify-reset-otp"
-  element={<VerifyResetOtp />}
-/>
-
-<Route
-  path="/reset-password"
-  element={<ResetPassword />}
-/>
-      {/* =========================
-          ADMIN
-      ========================= */}
-      <Route element={<ProtectedRoute allowedRole="ADMIN" />}>
-      <Route
-        path="/admin/login"
-        element={<AdminLogin />}
-      />
-=======
   <Route element={<ProtectedRoute allowedRole="ADMIN" />}>
     <Route path="/admin" element={<AdminDashboard />} />
     <Route path="/admin/quotes" element={<AdminQuotes />} />
@@ -146,7 +107,6 @@ export default function App() {
       <Route path="payment-success" element={<PaymentSuccess />} />
     </Route>
   </Route>
->>>>>>> agents/help-me-fix-describe-the-bug-in-this
 
   <Route path="*" element={<NotFound />} />
 </Routes>
