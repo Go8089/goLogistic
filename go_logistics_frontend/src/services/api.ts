@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:8080/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -21,10 +21,22 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      const currentPath = window.location.pathname;
+      const publicAuthRoutes = [
+        "/login",
+        "/register",
+        "/forgot-password",
+        "/verify-reset-otp",
+        "/reset-password",
+        "/admin/login",
+      ];
+
       localStorage.removeItem("token");
       localStorage.removeItem("user");
 
-      window.location.href = "/login";
+      if (!publicAuthRoutes.includes(currentPath)) {
+        window.location.href = "/login";
+      }
     }
 
     return Promise.reject(error);

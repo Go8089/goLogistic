@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, CheckCircle2, ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
+
+import { createCustomerQuote } from "../services/customerService";
 
 interface QuoteForm {
   pickupLocation: string;
@@ -51,6 +53,20 @@ export default function Quote() {
     useState<QuoteForm>(initialForm);
 
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const syncAuthState = () => {
+      setIsAuthenticated(Boolean(localStorage.getItem("token")));
+    };
+
+    syncAuthState();
+    window.addEventListener("storage", syncAuthState);
+
+    return () => window.removeEventListener("storage", syncAuthState);
+  }, []);
 
   const handleChange = (
     event: React.ChangeEvent<
@@ -75,18 +91,76 @@ export default function Quote() {
     });
   };
 
-  const handleSubmit = (
+  const handleSubmit = async (
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
+    setError("");
+    setIsSubmitting(true);
 
-    console.log("Quote request:", form);
-
-    setSubmitted(true);
+    try {
+      await createCustomerQuote({
+        origin: form.pickupLocation,
+        destination: form.deliveryLocation,
+        cargo: form.cargoType,
+        weight: form.weight,
+        containerSize: form.containerSize,
+        requestedVehicle: form.vehicleCategory,
+        amount: "0",
+      });
+      setSubmitted(true);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Unable to submit quote request right now."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
     return <QuoteSuccess />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-gray-50">
+        <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="rounded-2xl border border-amber-200 bg-white p-8 shadow-sm sm:p-10">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+              <ShieldAlert size={28} />
+            </div>
+
+            <h1 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">
+              Login required to request a quote
+            </h1>
+
+            <p className="mt-4 text-base leading-7 text-gray-600">
+              Registration and login are required to request pricing, book cargo transport,
+              and manage your logistics account with GoLogistic.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                Customer Login
+              </Link>
+
+              <Link
+                to="/register"
+                className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
+              >
+                Register Now
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const availableSizes =
@@ -279,6 +353,12 @@ export default function Quote() {
               className="mt-6 w-full resize-none rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
 
+            {error && (
+              <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+
             {/* Buttons */}
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Link
@@ -290,9 +370,10 @@ export default function Quote() {
 
               <button
                 type="submit"
-                className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                disabled={isSubmitting}
+                className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
               >
-                Submit Quote Request
+                {isSubmitting ? "Submitting..." : "Submit Quote Request"}
               </button>
             </div>
           </div>

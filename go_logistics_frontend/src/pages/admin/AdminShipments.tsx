@@ -1,10 +1,13 @@
 import { PackageOpen, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getAdminShipments } from "../../services/adminService";
 
 type ShipmentStatus =
   | "Pending"
+  | "Assigned"
   | "In Transit"
-  | "Delivered";
+  | "Delivered"
+  | "Completed";
 
 interface Shipment {
   id: string;
@@ -18,56 +21,24 @@ interface Shipment {
   status: ShipmentStatus;
 }
 
-const shipments: Shipment[] = [
-  {
-    id: "TRK10001",
-    bookingId: "BK10001",
-    customer: "Rahul Sharma",
-    origin: "Pune, Maharashtra",
-    destination: "Mumbai, Maharashtra",
-    vehicle: "MH12 AB 1234",
-    shipmentDate: "Aug 20, 2026",
-    estimatedDelivery: "Aug 22, 2026",
-    status: "In Transit",
-  },
-  {
-    id: "TRK10002",
-    bookingId: "BK10002",
-    customer: "Priya Enterprises",
-    origin: "Pune, Maharashtra",
-    destination: "Nagpur, Maharashtra",
-    vehicle: "MH12 CD 5678",
-    shipmentDate: "Aug 22, 2026",
-    estimatedDelivery: "Aug 25, 2026",
-    status: "Pending",
-  },
-  {
-    id: "TRK10003",
-    bookingId: "BK10003",
-    customer: "Amit Kumar",
-    origin: "Mumbai, Maharashtra",
-    destination: "Pune, Maharashtra",
-    vehicle: "MH12 EF 9012",
-    shipmentDate: "Aug 18, 2026",
-    estimatedDelivery: "Aug 20, 2026",
-    status: "Delivered",
-  },
-  {
-    id: "TRK10004",
-    bookingId: "BK10004",
-    customer: "Shree Industries",
-    origin: "Pune, Maharashtra",
-    destination: "Nashik, Maharashtra",
-    vehicle: "MH12 GH 3456",
-    shipmentDate: "Aug 15, 2026",
-    estimatedDelivery: "Aug 17, 2026",
-    status: "Delivered",
-  },
-];
-
 export default function AdminShipments() {
+  const [shipments, setShipments] = useState<Shipment[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadShipments() {
+      try {
+        const data = await getAdminShipments();
+        setShipments(data);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load shipments");
+      }
+    }
+
+    void loadShipments();
+  }, []);
 
   const filteredShipments = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -102,6 +73,11 @@ export default function AdminShipments() {
         <p className="mt-2 text-sm text-gray-500">
           Monitor and manage customer shipments.
         </p>
+        {error && (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Filters */}
@@ -129,8 +105,10 @@ export default function AdminShipments() {
           >
             <option value="All">All Statuses</option>
             <option value="Pending">Pending</option>
+            <option value="Assigned">Assigned</option>
             <option value="In Transit">In Transit</option>
             <option value="Delivered">Delivered</option>
+            <option value="Completed">Completed</option>
           </select>
         </div>
       </div>
@@ -318,8 +296,16 @@ function StatusBadge({
 }: {
   status: ShipmentStatus;
 }) {
+  const styles: Record<ShipmentStatus, string> = {
+    Pending: "bg-yellow-50 text-yellow-700",
+    Assigned: "bg-purple-50 text-purple-700",
+    "In Transit": "bg-blue-50 text-blue-700",
+    Delivered: "bg-green-50 text-green-700",
+    Completed: "bg-emerald-50 text-emerald-700",
+  };
+
   return (
-    <span className="inline-flex whitespace-nowrap rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${styles[status]}`}>
       {status}
     </span>
   );

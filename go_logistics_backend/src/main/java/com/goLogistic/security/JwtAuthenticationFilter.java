@@ -58,10 +58,10 @@ public class JwtAuthenticationFilter
                     jwtService.extractEmail(token);
 
                 User user =
-                    userRepository.findByEmail(email)
+                    userRepository.findByEmailIgnoreCase(email)
                         .orElse(null);
 
-                if (user != null) {
+                if (user != null && user.isEnabled()) {
 
                     var authority =
                         new SimpleGrantedAuthority(

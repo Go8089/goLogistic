@@ -10,8 +10,9 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { getAdminDashboard } from "../../services/adminService";
 
 const navigation = [
   {
@@ -50,59 +51,27 @@ const navigation = [
     icon: CreditCard,
   },
 ];
-const stats = [
-  {
-    label: "Total Customers",
-    value: "1,248",
-  },
-  {
-    label: "Pending Quotes",
-    value: "32",
-  },
-  {
-    label: "Active Shipments",
-    value: "86",
-  },
-  {
-    label: "Completed Shipments",
-    value: "742",
-  },
-];
-
-const recentQuotes = [
-  {
-    id: "QT10021",
-    customer: "Rahul Sharma",
-    route: "Pune → Mumbai",
-    amount: "₹18,500",
-    status: "Pending",
-  },
-  {
-    id: "QT10020",
-    customer: "Amit Kumar",
-    route: "Mumbai → Nashik",
-    amount: "₹22,000",
-    status: "Approved",
-  },
-  {
-    id: "QT10019",
-    customer: "Neha Singh",
-    route: "Pune → Nagpur",
-    amount: "₹32,000",
-    status: "Pending",
-  },
-  {
-    id: "QT10018",
-    customer: "Vikas Patel",
-    route: "Pune → Aurangabad",
-    amount: "₹15,800",
-    status: "Approved",
-  },
-];
-
 export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [stats, setStats] = useState<Array<{ label: string; value: number | string }>>([]);
+  const [recentQuotes, setRecentQuotes] = useState<Array<{ id: string; customer: string; route?: string; amount?: string; status?: string }>>([]);
+  const [error, setError] = useState("");
   const location = useLocation();
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const response = await getAdminDashboard();
+        setStats(response.stats ?? []);
+        setRecentQuotes(response.recentQuotes ?? []);
+      } catch (loadError) {
+        const message = loadError instanceof Error ? loadError.message : "Unable to load dashboard data";
+        setError(message);
+      }
+    }
+
+    void loadDashboard();
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -230,11 +199,20 @@ export default function AdminDashboard() {
             <p className="mt-2 text-sm text-gray-500">
               Monitor your transportation business operations.
             </p>
+            {error && (
+              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </p>
+            )}
           </div>
 
           {/* Stats */}
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat) => (
+            {stats.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-500 sm:col-span-2 lg:col-span-4">
+                Loading dashboard data...
+              </div>
+            ) : stats.map((stat) => (
               <div
                 key={stat.label}
                 className="rounded-xl border border-gray-200 bg-white p-5"
@@ -308,21 +286,21 @@ export default function AdminDashboard() {
                           </p>
 
                           <p className="mt-1 text-xs text-gray-400">
-                            {quote.amount}
+                            {quote.amount ?? "N/A"}
                           </p>
                         </td>
-
+ 
                         <td className="px-5 py-4 text-sm text-gray-700">
                           {quote.customer}
                         </td>
-
+ 
                         <td className="px-5 py-4 text-sm text-gray-600">
-                          {quote.route}
+                          {quote.route ?? "N/A"}
                         </td>
-
+ 
                         <td className="px-5 py-4">
                           <StatusBadge
-                            status={quote.status}
+                            status={quote.status ?? "Pending"}
                           />
                         </td>
                       </tr>

@@ -15,7 +15,9 @@ import QuoteHistory from "../../components/quotes/QuoteHistory";
 import type { QuoteHistoryEntry } from "../../components/quotes/QuoteHistory";
 import { downloadQuotePdf } from "../../utils/quotePdf";
 import { useEffect, useState } from "react";
-type QuoteStatus = "Pending" | "Approved" | "Rejected";
+import { getAdminQuoteById, updateAdminQuoteStatus } from "../../services/adminService";
+
+type QuoteStatus = "Pending" | "Approved" | "Rejected" | "Expired";
 
 interface Quote {
   id: string;
@@ -32,55 +34,7 @@ interface Quote {
   requestedDate: string;
   status: QuoteStatus;
 }
-const quoteData: Record<string, Quote> = {
-  QT10001: {
-    id: "QT10001",
-    customerName: "Rahul Sharma",
-    customerEmail: "rahul@example.com",
-    customerPhone: "+91 98765 43210",
-    origin: "Pune, Maharashtra",
-    destination: "Mumbai, Maharashtra",
-    cargo: "Commercial Goods",
-    weight: "850 kg",
-    containerSize: "20 ft",
-    vehicle: "Truck",
-    price: "₹18,500",
-    requestedDate: "Aug 20, 2026",
-    status: "Approved",
-  },
 
-  QT10002: {
-    id: "QT10002",
-    customerName: "Priya Enterprises",
-    customerEmail: "priya@example.com",
-    customerPhone: "+91 98765 12345",
-    origin: "Pune, Maharashtra",
-    destination: "Nagpur, Maharashtra",
-    cargo: "Industrial Equipment",
-    weight: "1,200 kg",
-    containerSize: "32 ft",
-    vehicle: "Container Truck",
-    price: "₹32,000",
-    requestedDate: "Aug 22, 2026",
-    status: "Pending",
-  },
-
-  QT10003: {
-    id: "QT10003",
-    customerName: "Amit Kumar",
-    customerEmail: "amit@example.com",
-    customerPhone: "+91 99887 66554",
-    origin: "Mumbai, Maharashtra",
-    destination: "Pune, Maharashtra",
-    cargo: "General Cargo",
-    weight: "450 kg",
-    containerSize: "14 ft",
-    vehicle: "Mini Truck",
-    price: "₹12,500",
-    requestedDate: "Aug 18, 2026",
-    status: "Approved",
-  },
-};
 const quoteHistory: QuoteHistoryEntry[] = [
   {
     status: "Requested",
@@ -103,18 +57,70 @@ const quoteHistory: QuoteHistoryEntry[] = [
 ];
 export default function AdminQuoteDetails() {
   const { id } = useParams();
-
-  const quote = id ? quoteData[id] : undefined;
-
-  const [status, setStatus] = useState<QuoteStatus>(
-    quote?.status ?? "Pending"
-  );
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [status, setStatus] = useState<QuoteStatus>("Pending");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (quote) {
-      setStatus(quote.status);
+    async function loadQuote() {
+      if (!id) {
+        setQuote(null);
+        return;
+      }
+
+      try {
+        const data = await getAdminQuoteById(id);
+
+        setQuote({
+          id: data.id,
+          customerName: data.customer,
+          customerEmail: data.email,
+          customerPhone: "+91 98765 43210",
+          origin: data.origin,
+          destination: data.destination,
+          cargo: data.cargo,
+          weight: data.weight,
+          containerSize: data.containerSize,
+          vehicle: data.requestedVehicle,
+          price: data.amount || "₹0",
+          requestedDate: data.requestedDate,
+          status: data.status,
+        });
+        setStatus(data.status);
+        setError("");
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load quote details");
+        setQuote(null);
+      }
     }
-  }, [quote]);
+
+    void loadQuote();
+  }, [id]);
+
+  const handleStatusUpdate = async (nextStatus: QuoteStatus) => {
+    if (!quote || !id) return;
+
+    try {
+      const updated = await updateAdminQuoteStatus(id, {
+        status: nextStatus,
+        amount: nextStatus === "Approved" ? quote.price : quote.price,
+      });
+
+      setStatus(updated.status);
+      setQuote((current) =>
+        current
+          ? {
+              ...current,
+              status: updated.status,
+              price: updated.amount || current.price,
+            }
+          : current
+      );
+      setError("");
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Unable to update quote status");
+    }
+  };
 
   if (!quote) {
     return <QuoteNotFound />;
@@ -132,6 +138,12 @@ export default function AdminQuoteDetails() {
       </Link>
 
       {/* Header */}
+      {error && (
+        <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+         {error}
+        </div>
+      )}
+
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-medium text-blue-600">
@@ -298,6 +310,13 @@ export default function AdminQuoteDetails() {
             description="The quoted transportation price was approved."
             date="Aug 20, 2026 · 02:30 PM"
             completed={status === "Approved"}
+          />
+
+          <HistoryItem
+            title="Quote Expired"
+            description="The quote expired and can no longer be booked."
+            date="Current status"
+            completed={status === "Expired"}
             last
           />
         </div>
@@ -347,7 +366,7 @@ export default function AdminQuoteDetails() {
         <>
           <button
             type="button"
-            onClick={() => setStatus("Rejected")}
+            onClick={() => void handleStatusUpdate("Rejected")}
             className="rounded-lg border border-red-300 px-5 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
           >
             Reject Quote
@@ -355,7 +374,15 @@ export default function AdminQuoteDetails() {
 
           <button
             type="button"
-            onClick={() => setStatus("Approved")}
+            onClick={() => void handleStatusUpdate("Expired")}
+            className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+          >
+            Expire Quote
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleStatusUpdate("Approved")}
             className="rounded-lg bg-green-600 px-5 py-3 text-sm font-semibold text-white hover:bg-green-700"
           >
             Approve Quote
@@ -490,7 +517,9 @@ function StatusBadge({
       ? "bg-green-50 text-green-700"
       : status === "Rejected"
         ? "bg-red-50 text-red-700"
-        : "bg-yellow-50 text-yellow-700";
+        : status === "Expired"
+          ? "bg-gray-200 text-gray-700"
+          : "bg-yellow-50 text-yellow-700";
 
   return (
     <span

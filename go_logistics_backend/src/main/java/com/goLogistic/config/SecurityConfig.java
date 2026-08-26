@@ -90,7 +90,8 @@ public class SecurityConfig {
 
                 .requestMatchers(
                     "/api/auth/**",
-                    "/actuator/health"
+                    "/actuator/health",
+                    "/error"
                 )
                 .permitAll()
 
@@ -98,10 +99,24 @@ public class SecurityConfig {
                 .hasRole("ADMIN")
 
                 .requestMatchers("/api/customer/**")
-                .hasAnyRole("CUSTOMER", "ADMIN")
+                .hasRole("CUSTOMER")
 
                 .anyRequest()
                 .authenticated()
+            )
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(401);
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("{\"error\":\"Authentication required\"}");
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(403);
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("{\"error\":\"Access denied\"}");
+                })
             )
 
             .addFilterBefore(

@@ -9,41 +9,22 @@ import { Link } from "react-router-dom";
 const stats = [
   {
     label: "Active Shipments",
-    value: "3",
+    value: "0",
     icon: Truck,
   },
   {
     label: "Delivered",
-    value: "18",
+    value: "0",
     icon: Package,
   },
   {
     label: "Pending Quotes",
-    value: "2",
+    value: "0",
     icon: Clock3,
   },
 ];
 
-const recentShipments = [
-  {
-    id: "TRK10001",
-    destination: "Mumbai, Maharashtra",
-    status: "In Transit",
-    date: "Aug 22, 2026",
-  },
-  {
-    id: "TRK10002",
-    destination: "Nashik, Maharashtra",
-    status: "Delivered",
-    date: "Aug 17, 2026",
-  },
-  {
-    id: "TRK10003",
-    destination: "Nagpur, Maharashtra",
-    status: "In Transit",
-    date: "Aug 25, 2026",
-  },
-];
+const recentShipments: Array<{ id: string; destination: string; status: string; date: string }> = [];
 
 export default function Dashboard() {
   return (
@@ -130,78 +111,50 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* Desktop table */}
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100 text-left">
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Tracking ID
-                </th>
-
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Destination
-                </th>
-
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Status
-                </th>
-
-                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Delivery
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {recentShipments.map((shipment) => (
-                <tr
-                  key={shipment.id}
-                  className="border-b border-gray-100 last:border-0"
-                >
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                    {shipment.id}
-                  </td>
-
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {shipment.destination}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <Status status={shipment.status} />
-                  </td>
-
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {shipment.date}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile cards */}
-        <div className="divide-y divide-gray-100 md:hidden">
-          {recentShipments.map((shipment) => (
-            <div key={shipment.id} className="p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-gray-900">
-                  {shipment.id}
-                </p>
-
-                <Status status={shipment.status} />
-              </div>
-
-              <p className="mt-3 text-sm text-gray-600">
-                {shipment.destination}
-              </p>
-
-              <p className="mt-1 text-xs text-gray-500">
-                Expected delivery: {shipment.date}
-              </p>
+        {recentShipments.length === 0 ? (
+          <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+            <p className="text-base font-semibold text-gray-900">No recent shipment activity</p>
+            <p className="mt-2 text-sm text-gray-500">Your shipment history will appear here once bookings are created.</p>
+          </div>
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left">
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Tracking ID</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Destination</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Delivery</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentShipments.map((shipment) => (
+                    <tr key={shipment.id} className="border-b border-gray-100 last:border-0">
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{shipment.id}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{shipment.destination}</td>
+                      <td className="px-6 py-4"><Status status={shipment.status} /></td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{shipment.date}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+
+            <div className="divide-y divide-gray-100 md:hidden">
+              {recentShipments.map((shipment) => (
+                <div key={shipment.id} className="p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-gray-900">{shipment.id}</p>
+                    <Status status={shipment.status} />
+                  </div>
+                  <p className="mt-3 text-sm text-gray-600">{shipment.destination}</p>
+                  <p className="mt-1 text-xs text-gray-500">Expected delivery: {shipment.date}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

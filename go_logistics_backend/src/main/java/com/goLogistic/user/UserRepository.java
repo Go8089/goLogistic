@@ -7,9 +7,19 @@ import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 
-    Optional<User> findByEmail(String email);
+    Optional<User> findByEmailIgnoreCase(String email);
 
+<<<<<<< HEAD
     boolean existsByEmail(String email);
 
     Optional<User> findByPhone(String phone);
+=======
+    Optional<User> findByPhone(String phone);
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    default boolean existsByEmail(String email) {
+        return existsByEmailIgnoreCase(email);
+    }
+>>>>>>> agents/help-me-fix-describe-the-bug-in-this
 }

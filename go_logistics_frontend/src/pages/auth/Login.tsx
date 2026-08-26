@@ -107,6 +107,7 @@ export default function Login() {
                     Password
                   </label>
 
+<<<<<<< HEAD
                   <div className="mt-2 text-right">
   <button
     type="button"
@@ -116,6 +117,14 @@ export default function Login() {
     Forgot Password?
   </button>
 </div>
+=======
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    Forgot password?
+                  </Link>
+>>>>>>> agents/help-me-fix-describe-the-bug-in-this
                 </div>
 
                 <div className="relative mt-2">
