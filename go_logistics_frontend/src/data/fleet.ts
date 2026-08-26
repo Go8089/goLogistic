@@ -6,7 +6,7 @@ export const fleet = [
     description:
       "Suitable for smaller commercial shipments and local business deliveries.",
     image:
-      "https://images.unsplash.com/photo-1601584115197-04ecc0da31d8?auto=format&fit=crop&w=1200&q=80",
+      "https://5.imimg.com/data5/IMOB/Default/2024/5/416906456/SV/EK/FY/155994817/screenshot-2024-05-07-18-43-42-53-680d03679600f7af0b4c700c6b270fe7-1715087665264-jpg-1000x1000.jpg",
     features: [
       "Small cargo loads",
       "Local deliveries",
@@ -20,7 +20,7 @@ export const fleet = [
     description:
       "A versatile option for medium-sized commercial and industrial cargo.",
     image:
-      "https://images.unsplash.com/photo-1586191582056-2f3e6d9a5e1c?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=1200&q=80",
     features: [
       "Medium cargo",
       "Intercity routes",
