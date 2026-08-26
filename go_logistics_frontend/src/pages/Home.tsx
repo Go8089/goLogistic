@@ -85,51 +85,6 @@ export default function Home() {
               intercity, and long-distance cargo movement.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button to="/quote">
-                Get a Quote
-                <ArrowRight size={17} />
-              </Button>
-
-              <Button to="/tracking" variant="secondary">
-                Track Shipment
-              </Button>
-            </div>
-
-            {!isLoggedIn ? (
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link
-                  to="/login"
-                  className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
-                >
-                  Login
-                </Link>
-
-                <Link
-                  to="/register"
-                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  Register
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link
-                  to={dashboardPath}
-                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  {dashboardLabel}
-                </Link>
-
-                <Link
-                  to="/quote"
-                  className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-400 hover:bg-gray-50"
-                >
-                  Book a Shipment
-                </Link>
-              </div>
-            )}
-
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3">
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <CheckCircle2 size={17} className="text-blue-600" />
