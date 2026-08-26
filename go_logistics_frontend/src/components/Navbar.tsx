@@ -66,7 +66,7 @@ export default function Navbar() {
           </div>
 
           <span className="text-lg font-bold tracking-tight text-gray-900">
-            goLogistic
+            DTR
           </span>
         </Link>
 

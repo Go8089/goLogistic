@@ -102,7 +102,7 @@ export default function Home() {
           <div className="relative">
             <div className="overflow-hidden rounded-2xl bg-gray-200">
               <img
-                src="https://images.unsplash.com/photo-1586191582056-2f3e6d9a5e1c?auto=format&fit=crop&w=1400&q=80"
+                src="https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=1200&q=80"
                 alt="Cargo truck on a road"
                 className="h-[360px] w-full object-cover sm:h-[450px] lg:h-[520px]"
               />
@@ -341,7 +341,7 @@ export default function Home() {
                     to="/login"
                     className="inline-flex items-center justify-center rounded-xl border border-gray-600 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:border-blue-400 hover:bg-blue-500/10"
                   >
-                    Customer Login
+                    Login
                   </Link>
 
                   <Link

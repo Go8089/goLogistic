@@ -38,7 +38,7 @@ export default function Footer() {
               </div>
 
               <span className="text-lg font-bold tracking-tight text-gray-900">
-                goLogistic
+                DTR
               </span>
             </Link>
 
@@ -111,11 +111,11 @@ export default function Footer() {
 
                 <div>
                   <p className="text-sm font-medium text-gray-900">
-                    +91 98765 43210
+                    +91 931-008-0296
                   </p>
 
                   <p className="mt-1 text-xs text-gray-500">
-                    Mon–Sat, 9:00 AM – 7:00 PM
+                    Mon–Sun, 5:00 AM – 11:00 PM
                   </p>
                 </div>
               </div>
@@ -127,7 +127,7 @@ export default function Footer() {
                 />
 
                 <p className="text-sm text-gray-600">
-                  contact@gologistic.com
+                  contact@dtr.com
                 </p>
               </div>
 
@@ -138,7 +138,7 @@ export default function Footer() {
                 />
 
                 <p className="text-sm text-gray-600">
-                  Delhi, Bihar, India
+                  Delhi, Tata, Bihar, India
                 </p>
               </div>
             </div>
@@ -150,7 +150,7 @@ export default function Footer() {
       <div className="border-t border-gray-200">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <p className="text-xs text-gray-500">
-            © {new Date().getFullYear()} goLogistic. All rights reserved.
+            © {new Date().getFullYear()} DTR. All rights reserved.
           </p>
 
           <div className="flex gap-5">
