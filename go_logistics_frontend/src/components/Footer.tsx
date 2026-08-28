@@ -51,7 +51,7 @@ export default function Footer() {
               to="/quote"
               className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
             >
-              Request a Quote
+              Get a Quote
               <ArrowRight size={15} />
             </Link>
           </div>

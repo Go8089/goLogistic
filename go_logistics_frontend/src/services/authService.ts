@@ -20,36 +20,174 @@ export interface RegisterRequest {
   otp: string;
 }
 
-function getApiErrorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const payload = error.response?.data as
-      | { message?: string; error?: string }
-      | undefined;
+// Error message extractor - Single Responsibility
+class ApiErrorExtractor {
+  static extract(error: unknown): string {
+    if (axios.isAxiosError(error)) {
+      const payload = error.response?.data as
+        | { message?: string; error?: string; detail?: string }
+        | undefined;
 
-    return payload?.message || payload?.error || "Request failed";
+      return (
+        payload?.message ||
+        payload?.error ||
+        payload?.detail ||
+        error.message ||
+        "Request failed"
+      );
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return "An unexpected error occurred";
   }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Request failed";
 }
 
+// Auth service - handles authentication logic
+export const authService = {
+  async login(
+    email: string,
+    password: string
+  ): Promise<LoginResponse> {
+    try {
+      const response = await api.post<LoginResponse>("/auth/login", {
+        email: email.trim(),
+        password,
+      });
+
+      return response.data;
+    } catch (error) {
+      throw new Error(ApiErrorExtractor.extract(error));
+    }
+  },
+
+  async sendRegistrationOtp(data: {
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+    otpChannel: OtpChannel;
+  }): Promise<{ message: string }> {
+    try {
+      const response = await api.post<{ message: string }>(
+        "/auth/register/send-otp",
+        {
+          ...data,
+          email: data.email.trim(),
+          phone: data.phone.trim(),
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(ApiErrorExtractor.extract(error));
+    }
+  },
+
+  async register(data: RegisterRequest): Promise<{ message: string }> {
+    try {
+      const response = await api.post("/auth/register", {
+        ...data,
+        email: data.email.trim(),
+        phone: data.phone.trim(),
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(ApiErrorExtractor.extract(error));
+    }
+  },
+
+  async requestPasswordReset(
+    contact: string,
+    channel: OtpChannel
+  ): Promise<{ message: string }> {
+    try {
+      const response = await api.post<{ message: string }>(
+        "/auth/forgot-password",
+        {
+          contact: contact.trim(),
+          channel,
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(ApiErrorExtractor.extract(error));
+    }
+  },
+
+  async verifyResetOtp(
+    contact: string,
+    otp: string,
+    channel: OtpChannel
+  ): Promise<{ message: string }> {
+    try {
+      const response = await api.post<{ message: string }>(
+        "/auth/verify-reset-otp",
+        {
+          contact: contact.trim(),
+          channel,
+          otp: otp.trim(),
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(ApiErrorExtractor.extract(error));
+    }
+  },
+
+  async resetPassword(
+    contact: string,
+    otp: string,
+    password: string,
+    channel: OtpChannel
+  ): Promise<{ message: string }> {
+    try {
+      const response = await api.post<{ message: string }>(
+        "/auth/reset-password",
+        {
+          contact: contact.trim(),
+          otp: otp.trim(),
+          password,
+          channel,
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(ApiErrorExtractor.extract(error));
+    }
+  },
+
+  async adminLogin(
+    email: string,
+    password: string
+  ): Promise<LoginResponse> {
+    try {
+      const response = await api.post<LoginResponse>("/auth/admin/login", {
+        email: email.trim(),
+        password,
+      });
+
+      if (response.data.role !== "ADMIN") {
+        throw new Error("Admin access required");
+      }
+
+      return response.data;
+    } catch (error) {
+      throw new Error(ApiErrorExtractor.extract(error));
+    }
+  },
+};
+
+// For backward compatibility
 export async function login(
   email: string,
   password: string
 ): Promise<LoginResponse> {
-  try {
-    const response = await api.post<LoginResponse>("/auth/login", {
-      email,
-      password,
-    });
-
-    return response.data;
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error));
-  }
+  return authService.login(email, password);
 }
 
 export async function sendRegistrationOtp(data: {
@@ -59,37 +197,18 @@ export async function sendRegistrationOtp(data: {
   phone: string;
   otpChannel: OtpChannel;
 }) {
-  try {
-    const response = await api.post<{ message: string }>("/auth/register/send-otp", data);
-    return response.data;
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error));
-  }
+  return authService.sendRegistrationOtp(data);
 }
 
 export async function register(data: RegisterRequest) {
-  try {
-    const response = await api.post("/auth/register", data);
-    return response.data;
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error));
-  }
+  return authService.register(data);
 }
 
 export async function requestPasswordReset(
   contact: string,
   channel: OtpChannel
 ): Promise<{ message: string }> {
-  try {
-    const response = await api.post<{ message: string }>("/auth/forgot-password", {
-      contact,
-      channel,
-    });
-
-    return response.data;
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error));
-  }
+  return authService.requestPasswordReset(contact, channel);
 }
 
 export async function verifyResetOtp(
@@ -97,17 +216,7 @@ export async function verifyResetOtp(
   otp: string,
   channel: OtpChannel
 ): Promise<{ message: string }> {
-  try {
-    const response = await api.post<{ message: string }>("/auth/verify-reset-otp", {
-      contact,
-      channel,
-      otp,
-    });
-
-    return response.data;
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error));
-  }
+  return authService.verifyResetOtp(contact, otp, channel);
 }
 
 export async function resetPassword(
@@ -116,36 +225,12 @@ export async function resetPassword(
   password: string,
   channel: OtpChannel
 ): Promise<{ message: string }> {
-  try {
-    const response = await api.post<{ message: string }>("/auth/reset-password", {
-      contact,
-      otp,
-      password,
-      channel,
-    });
-
-    return response.data;
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error));
-  }
+  return authService.resetPassword(contact, otp, password, channel);
 }
 
 export async function adminLogin(
   email: string,
   password: string
-) : Promise<LoginResponse> {
-  try {
-    const response = await api.post<LoginResponse>("/auth/admin/login", {
-      email,
-      password,
-    });
-
-    if (response.data.role !== "ADMIN") {
-      throw new Error("Admin access required");
-    }
-
-    return response.data;
-  } catch (error) {
-    throw new Error(getApiErrorMessage(error));
-  }
+): Promise<LoginResponse> {
+  return authService.adminLogin(email, password);
 }
