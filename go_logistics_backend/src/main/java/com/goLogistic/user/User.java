@@ -59,6 +59,8 @@ public class User {
    @Column
    private String pincode;
 
+   @Column(nullable = false, columnDefinition = "boolean default false")
+   private boolean phoneVerified = false;
    @PrePersist
    protected void onCreate() {
        LocalDateTime now = LocalDateTime.now();
@@ -181,4 +183,12 @@ public class User {
    public void setPincode(String pincode) {
        this.pincode = pincode;
    }
+
+   public boolean isPhoneVerified() {
+    return phoneVerified;
+}
+
+public void setPhoneVerified(boolean phoneVerified) {
+    this.phoneVerified = phoneVerified;
+}
 }

@@ -36,7 +36,7 @@ public class CustomerAuthService {
             .trim()
             .toLowerCase();
 
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
             throw new IllegalArgumentException(
                 "Email is already registered"
             );
@@ -78,7 +78,7 @@ public void verifyEmail(VerifyEmailRequest request) {
         .toLowerCase();
 
     User user = userRepository
-        .findByEmail(email)
+        .findByEmailIgnoreCase(email)
         .orElseThrow(() ->
             new IllegalArgumentException(
                 "User not found"
@@ -110,7 +110,7 @@ public void resendEmailOtp(ResendOtpRequest request) {
         .toLowerCase();
 
     User user = userRepository
-        .findByEmail(email)
+        .findByEmailIgnoreCase(email)
         .orElseThrow(() ->
             new IllegalArgumentException(
                 "User not found"
@@ -166,7 +166,7 @@ public void forgotPassword(ForgotPasswordRequest request) {
         .toLowerCase();
 
     User user = userRepository
-        .findByEmail(email)
+        .findByEmailIgnoreCase(email)
         .orElseThrow(() ->
             new IllegalArgumentException(
                 "No account found with this email"
@@ -187,7 +187,7 @@ public String verifyResetOtp(
         .toLowerCase();
 
     User user = userRepository
-        .findByEmail(email)
+        .findByEmailIgnoreCase(email)
         .orElseThrow(() ->
             new IllegalArgumentException("User not found")
         );
