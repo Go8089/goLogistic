@@ -38,16 +38,32 @@ public class NotificationEventListener {
             Notification n = new Notification();
             n.setUser(payment.getCustomer());
             n.setType("PAYMENT_RECEIVED");
-            n.setChannel("EMAIL");
+
+            com.goLogistic.notification.NotificationChannel pref = payment.getCustomer().getPreferredNotificationChannel();
+            if (pref == null) pref = com.goLogistic.notification.NotificationChannel.EMAIL;
+            n.setChannel(pref.name());
+
             String message = String.format("Payment of %s received for booking %s.", payment.getAmount(), payment.getBooking() != null ? payment.getBooking().getBookingCode() : "N/A");
             n.setMessage(message);
             notificationRepository.save(n);
 
-            // send email & optionally sms
             String subject = "Payment received — Go Logistics";
             String htmlBody = "<p>" + message + "</p>";
             String textBody = message;
-            awsNotificationService.sendEmail(payment.getCustomer().getEmail(), subject, htmlBody, textBody);
+
+            // send only via preferred channel
+            switch (pref) {
+                case SMS:
+                    awsNotificationService.sendOtpSms(payment.getCustomer().getPhone(), message);
+                    break;
+                case WHATSAPP:
+                    whatsAppService.sendWhatsAppMessage(payment.getCustomer().getPhone(), message);
+                    break;
+                case EMAIL:
+                default:
+                    awsNotificationService.sendEmail(payment.getCustomer().getEmail(), subject, htmlBody, textBody);
+                    break;
+            }
 
             n.setStatus(NotificationStatus.SENT);
             n.setSentAt(LocalDateTime.now());
@@ -85,7 +101,23 @@ public class NotificationEventListener {
             String subject = "Shipment created — Go Logistics";
             String htmlBody = "<p>" + message + "</p>";
             String textBody = message;
-            awsNotificationService.sendEmail(shipment.getCustomer().getEmail(), subject, htmlBody, textBody);
+
+            com.goLogistic.notification.NotificationChannel pref = shipment.getCustomer().getPreferredNotificationChannel();
+            if (pref == null) pref = com.goLogistic.notification.NotificationChannel.EMAIL;
+            n.setChannel(pref.name());
+
+            switch (pref) {
+                case SMS:
+                    awsNotificationService.sendOtpSms(shipment.getCustomer().getPhone(), message);
+                    break;
+                case WHATSAPP:
+                    whatsAppService.sendWhatsAppMessage(shipment.getCustomer().getPhone(), message);
+                    break;
+                case EMAIL:
+                default:
+                    awsNotificationService.sendEmail(shipment.getCustomer().getEmail(), subject, htmlBody, textBody);
+                    break;
+            }
 
             n.setStatus(NotificationStatus.SENT);
             n.setSentAt(LocalDateTime.now());

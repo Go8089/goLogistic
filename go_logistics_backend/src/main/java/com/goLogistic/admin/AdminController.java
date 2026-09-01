@@ -129,7 +129,8 @@ public class AdminController {
                 user.getPhone(),
                 0,
                 formatDate(user.getCreatedAt()),
-                user.isEnabled() ? "Active" : "Inactive"
+                user.isEnabled() ? "Active" : "Inactive",
+                user.getPreferredNotificationChannel() != null ? user.getPreferredNotificationChannel().name() : "EMAIL"
             ));
         }
 
@@ -395,6 +396,38 @@ public class AdminController {
         return ResponseEntity.ok(toPaymentMap(saved));
     }
 
+    @PutMapping("/users/{id}/notification-channel")
+    public ResponseEntity<Map<String, Object>> updateUserNotificationChannel(
+        @PathVariable String id,
+        @RequestBody Map<String, String> payload
+    ) {
+        java.util.UUID userId;
+        try {
+            userId = java.util.UUID.fromString(id);
+        } catch (Exception ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid user id"));
+        }
+
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String channel = payload.getOrDefault("notificationChannel", "").trim();
+        if (channel.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "notificationChannel is required"));
+        }
+
+        try {
+            com.goLogistic.notification.NotificationChannel nc = com.goLogistic.notification.NotificationChannel.valueOf(channel.toUpperCase());
+            user.setPreferredNotificationChannel(nc);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("message", "updated", "notificationChannel", nc.name()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Unknown notification channel"));
+        }
+    }
+
     private Map<String, Object> toQuoteMap(QuoteRequest quote) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", quote.getReferenceCode());
@@ -459,7 +492,8 @@ public class AdminController {
         String phone,
         int shipments,
         String joinedDate,
-        String status
+        String status,
+        String notificationChannel
     ) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", id);
@@ -469,6 +503,7 @@ public class AdminController {
         item.put("shipments", shipments);
         item.put("joinedDate", joinedDate);
         item.put("status", status);
+        item.put("notificationChannel", notificationChannel);
         return item;
     }
 

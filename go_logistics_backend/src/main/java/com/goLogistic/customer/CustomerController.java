@@ -320,6 +320,17 @@ public class CustomerController {
        user.setState(normalize(request.state()));
        user.setPincode(normalize(request.pincode()));
 
+       // Update preferred notification channel if provided and valid
+       String channel = request.notificationChannel();
+       if (channel != null && !channel.isBlank()) {
+           try {
+               com.goLogistic.notification.NotificationChannel nc = com.goLogistic.notification.NotificationChannel.valueOf(channel.toUpperCase().trim());
+               user.setPreferredNotificationChannel(nc);
+           } catch (IllegalArgumentException ex) {
+               throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown notification channel");
+           }
+       }
+
        userRepository.save(user);
        return ResponseEntity.ok(toProfileMap(user));
    }
@@ -397,6 +408,7 @@ public class CustomerController {
        profile.put("state", normalize(user.getState()));
        profile.put("pincode", normalize(user.getPincode()));
        profile.put("role", user.getRole().name());
+       profile.put("notificationChannel", user.getPreferredNotificationChannel() != null ? user.getPreferredNotificationChannel().name() : "EMAIL");
        return profile;
    }
 

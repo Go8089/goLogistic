@@ -9,5 +9,6 @@ public record UpdateProfileRequest(
     String address,
     String city,
     String state,
-    String pincode
+    String pincode,
+    String notificationChannel
 ) {}

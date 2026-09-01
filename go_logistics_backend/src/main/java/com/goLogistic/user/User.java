@@ -59,6 +59,11 @@ public class User {
    @Column
    private String pincode;
 
+   // Preferred notification channel for this user. Default is EMAIL.
+   @Enumerated(EnumType.STRING)
+   @Column(name = "notification_channel", nullable = false)
+   private com.goLogistic.notification.NotificationChannel preferredNotificationChannel = com.goLogistic.notification.NotificationChannel.EMAIL;
+
    @PrePersist
    protected void onCreate() {
        LocalDateTime now = LocalDateTime.now();
@@ -66,6 +71,9 @@ public class User {
        this.updatedAt = now;
        if (this.role == null) {
            this.role = Role.CUSTOMER;
+       }
+       if (this.preferredNotificationChannel == null) {
+           this.preferredNotificationChannel = com.goLogistic.notification.NotificationChannel.EMAIL;
        }
    }
 
@@ -180,5 +188,13 @@ public class User {
 
    public void setPincode(String pincode) {
        this.pincode = pincode;
+   }
+
+   public com.goLogistic.notification.NotificationChannel getPreferredNotificationChannel() {
+       return preferredNotificationChannel;
+   }
+
+   public void setPreferredNotificationChannel(com.goLogistic.notification.NotificationChannel preferredNotificationChannel) {
+       this.preferredNotificationChannel = preferredNotificationChannel;
    }
 }
