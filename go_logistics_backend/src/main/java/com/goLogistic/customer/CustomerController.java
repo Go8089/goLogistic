@@ -38,7 +38,7 @@ public class CustomerController {
    private final com.goLogistic.quote.QuoteService quoteService;
    private final BookingRepository bookingRepository;
    private final com.goLogistic.booking.BookingService bookingService;
-   private final PaymentRepository paymentRepository;
+   private final com.goLogistic.payment.PaymentService paymentService;
    private final ShipmentRepository shipmentRepository;
    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -47,7 +47,7 @@ public class CustomerController {
        com.goLogistic.quote.QuoteService quoteService,
        BookingRepository bookingRepository,
        com.goLogistic.booking.BookingService bookingService,
-       PaymentRepository paymentRepository,
+       com.goLogistic.payment.PaymentService paymentService,
        ShipmentRepository shipmentRepository,
        org.springframework.context.ApplicationEventPublisher eventPublisher
    ) {
@@ -55,7 +55,7 @@ public class CustomerController {
        this.quoteService = quoteService;
        this.bookingRepository = bookingRepository;
        this.bookingService = bookingService;
-       this.paymentRepository = paymentRepository;
+       this.paymentService = paymentService;
        this.shipmentRepository = shipmentRepository;
        this.eventPublisher = eventPublisher;
    }
@@ -211,18 +211,14 @@ public class CustomerController {
            }
        }
 
-       Payment saved = paymentRepository.save(payment);
-
-       // publish payment received event for successful payments
        try {
-           if (saved.getStatus() == com.goLogistic.payment.PaymentStatus.SUCCESS) {
-               eventPublisher.publishEvent(new com.goLogistic.notification.events.PaymentReceivedEvent(this, saved));
-           }
-       } catch (Exception ex) {
-           // best-effort
+           Payment saved = paymentService.createPayment(user, payload);
+           return ResponseEntity.status(HttpStatus.CREATED).body(toPaymentMap(saved));
+       } catch (IllegalArgumentException ex) {
+           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+       } catch (IllegalStateException ex) {
+           throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
        }
-
-       return ResponseEntity.status(HttpStatus.CREATED).body(toPaymentMap(saved));
    }
 
    @GetMapping("/bookings")
