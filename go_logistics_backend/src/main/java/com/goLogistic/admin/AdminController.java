@@ -45,13 +45,16 @@ public class AdminController {
     private final PaymentRepository paymentRepository;
     private final VehicleRepository vehicleRepository;
 
+    private final com.goLogistic.payment.PaymentService paymentService;
+
     public AdminController(
         UserRepository userRepository,
         QuoteRequestRepository quoteRequestRepository,
         BookingRepository bookingRepository,
         ShipmentRepository shipmentRepository,
         PaymentRepository paymentRepository,
-        VehicleRepository vehicleRepository
+        VehicleRepository vehicleRepository,
+        com.goLogistic.payment.PaymentService paymentService
     ) {
         this.userRepository = userRepository;
         this.quoteRequestRepository = quoteRequestRepository;
@@ -59,6 +62,7 @@ public class AdminController {
         this.shipmentRepository = shipmentRepository;
         this.paymentRepository = paymentRepository;
         this.vehicleRepository = vehicleRepository;
+        this.paymentService = paymentService;
     }
 
     @GetMapping("/me")
@@ -380,20 +384,16 @@ public class AdminController {
         @PathVariable String id,
         @RequestBody Map<String, Object> payload
     ) {
-        Payment payment = paymentRepository.findByPaymentCode(id).orElse(null);
-        if (payment == null) {
-            return ResponseEntity.notFound().build();
+        String statusValue = String.valueOf(payload.getOrDefault("status", ""));
+        try {
+            com.goLogistic.payment.Payment updated = paymentService.updatePaymentStatus(id, statusValue);
+            return ResponseEntity.ok(toPaymentMap(updated));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(409).body(Map.of("message", ex.getMessage()));
         }
-
-        String statusValue = String.valueOf(payload.getOrDefault("status", payment.getStatus().name()));
-        String normalizedStatus = statusValue.toUpperCase(Locale.ROOT).replace("PAID", "SUCCESS");
-        payment.setStatus(PaymentStatus.valueOf(normalizedStatus));
-        if (payment.getStatus() == PaymentStatus.SUCCESS && payment.getBooking() != null) {
-            payment.getBooking().setStatus(BookingStatus.CONFIRMED);
-            bookingRepository.save(payment.getBooking());
-        }
-        Payment saved = paymentRepository.save(payment);
-        return ResponseEntity.ok(toPaymentMap(saved));
+    }
     }
 
     @PutMapping("/users/{id}/notification-channel")
