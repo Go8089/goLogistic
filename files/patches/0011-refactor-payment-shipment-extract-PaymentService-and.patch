@@ -1,0 +1,243 @@
+From 2d7463fe05fcccc78a9334cfabfe7a7412a8242f Mon Sep 17 00:00:00 2001
+From: go8089 <gopaljha8409@gmail.com>
+Date: Tue, 1 Sep 2026 03:30:29 +0000
+Subject: [PATCH 11/15] refactor(payment,shipment): extract PaymentService and
+ ShipmentService; move createPayment and shipment creation logic into services
+
+---
+ .../customer/CustomerController.java          |  22 ++--
+ .../goLogistic/payment/PaymentService.java    | 104 ++++++++++++++++++
+ .../goLogistic/shipment/ShipmentService.java  |  54 +++++++++
+ 3 files changed, 167 insertions(+), 13 deletions(-)
+ create mode 100644 go_logistics_backend/src/main/java/com/goLogistic/payment/PaymentService.java
+ create mode 100644 go_logistics_backend/src/main/java/com/goLogistic/shipment/ShipmentService.java
+
+diff --git a/go_logistics_backend/src/main/java/com/goLogistic/customer/CustomerController.java b/go_logistics_backend/src/main/java/com/goLogistic/customer/CustomerController.java
+index 5e8969b..416b2da 100644
+--- a/go_logistics_backend/src/main/java/com/goLogistic/customer/CustomerController.java
++++ b/go_logistics_backend/src/main/java/com/goLogistic/customer/CustomerController.java
+@@ -38,7 +38,7 @@ public class CustomerController {
+    private final com.goLogistic.quote.QuoteService quoteService;
+    private final BookingRepository bookingRepository;
+    private final com.goLogistic.booking.BookingService bookingService;
+-   private final PaymentRepository paymentRepository;
++   private final com.goLogistic.payment.PaymentService paymentService;
+    private final ShipmentRepository shipmentRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+ 
+@@ -47,7 +47,7 @@ public class CustomerController {
+        com.goLogistic.quote.QuoteService quoteService,
+        BookingRepository bookingRepository,
+        com.goLogistic.booking.BookingService bookingService,
+-       PaymentRepository paymentRepository,
++       com.goLogistic.payment.PaymentService paymentService,
+        ShipmentRepository shipmentRepository,
+        org.springframework.context.ApplicationEventPublisher eventPublisher
+    ) {
+@@ -55,7 +55,7 @@ public class CustomerController {
+        this.quoteService = quoteService;
+        this.bookingRepository = bookingRepository;
+        this.bookingService = bookingService;
+-       this.paymentRepository = paymentRepository;
++       this.paymentService = paymentService;
+        this.shipmentRepository = shipmentRepository;
+        this.eventPublisher = eventPublisher;
+    }
+@@ -211,18 +211,14 @@ public class CustomerController {
+            }
+        }
+ 
+-       Payment saved = paymentRepository.save(payment);
+-
+-       // publish payment received event for successful payments
+        try {
+-           if (saved.getStatus() == com.goLogistic.payment.PaymentStatus.SUCCESS) {
+-               eventPublisher.publishEvent(new com.goLogistic.notification.events.PaymentReceivedEvent(this, saved));
+-           }
+-       } catch (Exception ex) {
+-           // best-effort
++           Payment saved = paymentService.createPayment(user, payload);
++           return ResponseEntity.status(HttpStatus.CREATED).body(toPaymentMap(saved));
++       } catch (IllegalArgumentException ex) {
++           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
++       } catch (IllegalStateException ex) {
++           throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
+        }
+-
+-       return ResponseEntity.status(HttpStatus.CREATED).body(toPaymentMap(saved));
+    }
+ 
+    @GetMapping("/bookings")
+diff --git a/go_logistics_backend/src/main/java/com/goLogistic/payment/PaymentService.java b/go_logistics_backend/src/main/java/com/goLogistic/payment/PaymentService.java
+new file mode 100644
+index 0000000..117a87c
+--- /dev/null
++++ b/go_logistics_backend/src/main/java/com/goLogistic/payment/PaymentService.java
+@@ -0,0 +1,104 @@
++package com.goLogistic.payment;
++
++import com.goLogistic.booking.Booking;
++import com.goLogistic.booking.BookingRepository;
++import com.goLogistic.notification.events.PaymentReceivedEvent;
++import com.goLogistic.shipment.ShipmentService;
++import com.goLogistic.shipment.Shipment;
++import com.goLogistic.user.User;
++import org.springframework.context.ApplicationEventPublisher;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++import java.time.LocalDateTime;
++import java.util.Map;
++
++@Service
++public class PaymentService {
++
++    private final PaymentRepository paymentRepository;
++    private final BookingRepository bookingRepository;
++    private final ShipmentService shipmentService;
++    private final ApplicationEventPublisher eventPublisher;
++
++    public PaymentService(PaymentRepository paymentRepository, BookingRepository bookingRepository, ShipmentService shipmentService, ApplicationEventPublisher eventPublisher) {
++        this.paymentRepository = paymentRepository;
++        this.bookingRepository = bookingRepository;
++        this.shipmentService = shipmentService;
++        this.eventPublisher = eventPublisher;
++    }
++
++    @Transactional
++    public Payment createPayment(User user, Map<String, Object> payload) {
++        String bookingCode = String.valueOf(payload.getOrDefault("bookingCode", "")).trim();
++        if (bookingCode.isBlank()) {
++            throw new IllegalArgumentException("Booking code is required");
++        }
++
++        Booking booking = bookingRepository.findByBookingCode(bookingCode).orElseThrow(() -> new IllegalArgumentException("Booking not found"));
++
++        if (!booking.getCustomer().getId().equals(user.getId())) {
++            throw new IllegalArgumentException("Booking does not belong to this customer");
++        }
++
++        if (paymentRepository.findByBooking(booking).isPresent()) {
++            throw new IllegalStateException("Payment already exists for this booking");
++        }
++
++        String method = String.valueOf(payload.getOrDefault("method", "UPI")).trim().toUpperCase();
++        String transactionReference = String.valueOf(payload.getOrDefault("transactionReference", payload.getOrDefault("transactionId", "TXN" + System.currentTimeMillis()))).trim();
++        String statusValue = String.valueOf(payload.getOrDefault("status", "PENDING")).trim().toUpperCase();
++        PaymentStatus status = PaymentStatus.valueOf(statusValue.replace("PAID", "SUCCESS"));
++
++        Payment payment = new Payment();
++        payment.setCustomer(user);
++        payment.setBooking(booking);
++        payment.setQuoteReference(booking.getQuote().getReferenceCode());
++        payment.setAmount(booking.getAmount());
++        payment.setMethod(method);
++        payment.setTransactionReference(transactionReference);
++        payment.setStatus(status);
++
++        Payment saved = paymentRepository.save(payment);
++
++        if (saved.getStatus() == PaymentStatus.SUCCESS) {
++            booking.setStatus(com.goLogistic.booking.BookingStatus.CONFIRMED);
++            bookingRepository.save(booking);
++
++            // create shipment via ShipmentService
++            Shipment created = shipmentService.createShipmentForBooking(booking, user);
++
++            // publish payment received event
++            try {
++                eventPublisher.publishEvent(new PaymentReceivedEvent(this, saved));
++            } catch (Exception ex) {
++                // best-effort
++            }
++        }
++
++        return saved;
++    }
++
++    @Transactional
++    public Payment updatePaymentStatus(String paymentCode, String statusValue) {
++        Payment payment = paymentRepository.findByPaymentCode(paymentCode).orElseThrow(() -> new IllegalArgumentException("Payment not found"));
++        String normalized = statusValue.toUpperCase().replace("PAID", "SUCCESS");
++        PaymentStatus newStatus = PaymentStatus.valueOf(normalized);
++        payment.setStatus(newStatus);
++
++        if (newStatus == PaymentStatus.SUCCESS && payment.getBooking() != null) {
++            Booking booking = payment.getBooking();
++            booking.setStatus(com.goLogistic.booking.BookingStatus.CONFIRMED);
++            bookingRepository.save(booking);
++            shipmentService.createShipmentForBooking(booking, payment.getCustomer());
++
++            try {
++                eventPublisher.publishEvent(new PaymentReceivedEvent(this, payment));
++            } catch (Exception ex) {
++                // best-effort
++            }
++        }
++
++        return paymentRepository.save(payment);
++    }
++}
+diff --git a/go_logistics_backend/src/main/java/com/goLogistic/shipment/ShipmentService.java b/go_logistics_backend/src/main/java/com/goLogistic/shipment/ShipmentService.java
+new file mode 100644
+index 0000000..1e74d5c
+--- /dev/null
++++ b/go_logistics_backend/src/main/java/com/goLogistic/shipment/ShipmentService.java
+@@ -0,0 +1,54 @@
++package com.goLogistic.shipment;
++
++import com.goLogistic.booking.Booking;
++import com.goLogistic.user.User;
++import com.goLogistic.notification.events.ShipmentCreatedEvent;
++import org.springframework.context.ApplicationEventPublisher;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++import java.time.LocalDateTime;
++
++@Service
++public class ShipmentService {
++
++    private final ShipmentRepository shipmentRepository;
++    private final ApplicationEventPublisher eventPublisher;
++
++    public ShipmentService(ShipmentRepository shipmentRepository, ApplicationEventPublisher eventPublisher) {
++        this.shipmentRepository = shipmentRepository;
++        this.eventPublisher = eventPublisher;
++    }
++
++    @Transactional
++    public Shipment createShipmentForBooking(Booking booking, User customer) {
++        // Return existing shipment if present
++        var existing = shipmentRepository.findByBooking(booking).orElse(null);
++        if (existing != null) {
++            return existing;
++        }
++
++        Shipment shipment = new Shipment();
++        shipment.setBooking(booking);
++        shipment.setCustomer(customer);
++
++        String route = booking.getRoute() != null ? booking.getRoute() : "";
++        shipment.setOrigin(route.contains("→") ? route.split("→", 2)[0].trim() : route);
++        shipment.setDestination(route.contains("→") ? route.split("→", 2)[1].trim() : route);
++        shipment.setVehicleRegistration(booking.getVehicle() != null ? booking.getVehicle() : "");
++        shipment.setShipmentDate(LocalDateTime.now());
++        shipment.setEstimatedDelivery(LocalDateTime.now().plusDays(2));
++        shipment.setStatus(ShipmentStatus.PENDING);
++
++        Shipment saved = shipmentRepository.save(shipment);
++
++        // publish event
++        try {
++            eventPublisher.publishEvent(new ShipmentCreatedEvent(this, saved));
++        } catch (Exception ex) {
++            // best-effort
++        }
++
++        return saved;
++    }
++}
+-- 
+2.43.0
+

@@ -1,0 +1,41 @@
+From 820655704bfd873351811e0d107478c21a755a2a Mon Sep 17 00:00:00 2001
+From: go8089 <gopaljha8409@gmail.com>
+Date: Tue, 1 Sep 2026 03:07:08 +0000
+Subject: [PATCH 05/15] fix(notification): use generic sendEmail for
+ notifications (correct subject/body)
+
+---
+ .../notification/NotificationEventListener.java        | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/go_logistics_backend/src/main/java/com/goLogistic/notification/NotificationEventListener.java b/go_logistics_backend/src/main/java/com/goLogistic/notification/NotificationEventListener.java
+index 0022e46..b9ad175 100644
+--- a/go_logistics_backend/src/main/java/com/goLogistic/notification/NotificationEventListener.java
++++ b/go_logistics_backend/src/main/java/com/goLogistic/notification/NotificationEventListener.java
+@@ -38,7 +38,10 @@ public class NotificationEventListener {
+             notificationRepository.save(n);
+ 
+             // send email & optionally sms
+-            awsNotificationService.sendPasswordResetEmail(payment.getCustomer().getEmail(), message);
++            String subject = "Payment received — Go Logistics";
++            String htmlBody = "<p>" + message + "</p>";
++            String textBody = message;
++            awsNotificationService.sendEmail(payment.getCustomer().getEmail(), subject, htmlBody, textBody);
+ 
+             n.setStatus(NotificationStatus.SENT);
+             n.setSentAt(LocalDateTime.now());
+@@ -60,7 +63,10 @@ public class NotificationEventListener {
+             n.setMessage(message);
+             notificationRepository.save(n);
+ 
+-            awsNotificationService.sendPasswordResetEmail(shipment.getCustomer().getEmail(), message);
++            String subject = "Shipment created — Go Logistics";
++            String htmlBody = "<p>" + message + "</p>";
++            String textBody = message;
++            awsNotificationService.sendEmail(shipment.getCustomer().getEmail(), subject, htmlBody, textBody);
+ 
+             n.setStatus(NotificationStatus.SENT);
+             n.setSentAt(LocalDateTime.now());
+-- 
+2.43.0
+

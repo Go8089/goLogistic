@@ -1,0 +1,61 @@
+From 51d0e9d118ccefbd7d982fac20eba809b55f730f Mon Sep 17 00:00:00 2001
+From: go8089 <gopaljha8409@gmail.com>
+Date: Tue, 1 Sep 2026 03:10:47 +0000
+Subject: [PATCH 07/15] feat(notification): websocket delivery and WhatsApp
+ stub; notification API
+
+---
+ .../NotificationEventListener.java            |  4 +++-
+ .../notification/WhatsAppService.java         | 21 +++++++++++++++++++
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+ create mode 100644 go_logistics_backend/src/main/java/com/goLogistic/notification/WhatsAppService.java
+
+diff --git a/go_logistics_backend/src/main/java/com/goLogistic/notification/NotificationEventListener.java b/go_logistics_backend/src/main/java/com/goLogistic/notification/NotificationEventListener.java
+index 2224c73..09d6a6d 100644
+--- a/go_logistics_backend/src/main/java/com/goLogistic/notification/NotificationEventListener.java
++++ b/go_logistics_backend/src/main/java/com/goLogistic/notification/NotificationEventListener.java
+@@ -22,11 +22,13 @@ public class NotificationEventListener {
+ 
+     private final NotificationRepository notificationRepository;
+     private final AwsNotificationService awsNotificationService;
++    private final WhatsAppService whatsAppService;
+ 
+-    public NotificationEventListener(NotificationRepository notificationRepository, AwsNotificationService awsNotificationService, SimpMessagingTemplate messagingTemplate) {
++    public NotificationEventListener(NotificationRepository notificationRepository, AwsNotificationService awsNotificationService, SimpMessagingTemplate messagingTemplate, WhatsAppService whatsAppService) {
+         this.notificationRepository = notificationRepository;
+         this.awsNotificationService = awsNotificationService;
+         this.messagingTemplate = messagingTemplate;
++        this.whatsAppService = whatsAppService;
+     }
+ 
+     @EventListener
+diff --git a/go_logistics_backend/src/main/java/com/goLogistic/notification/WhatsAppService.java b/go_logistics_backend/src/main/java/com/goLogistic/notification/WhatsAppService.java
+new file mode 100644
+index 0000000..9582b94
+--- /dev/null
++++ b/go_logistics_backend/src/main/java/com/goLogistic/notification/WhatsAppService.java
+@@ -0,0 +1,21 @@
++package com.goLogistic.notification;
++
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.stereotype.Service;
++
++@Service
++public class WhatsAppService {
++
++    private static final Logger log = LoggerFactory.getLogger(WhatsAppService.class);
++
++    /**
++     * Send a WhatsApp message via a Business API integration.
++     * This is a stub implementation — replace with an actual provider client.
++     */
++    public boolean sendWhatsAppMessage(String phoneNumber, String message) {
++        log.info("[WhatsApp stub] send to {}: {}", phoneNumber, message);
++        // TODO: integrate with WhatsApp Business API or provider
++        return false;
++    }
++}
+-- 
+2.43.0
+

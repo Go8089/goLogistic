@@ -1,0 +1,248 @@
+From c6ca1e1d0279e83ebf1dd55a808110ac0424256d Mon Sep 17 00:00:00 2001
+From: go8089 <gopaljha8409@gmail.com>
+Date: Tue, 1 Sep 2026 03:55:03 +0000
+Subject: [PATCH 14/15] chore: apply tracking frontend wiring, OTP TTL & resend
+ limit, and migration compatibility change
+
+- Removed server-side gen_random_uuid() default in V2 migration to improve Postgres compatibility
+- Reduced OTP TTL to 60 seconds and added a resend limit to prevent repeated sends
+- Added frontend STOMP/SockJS tracking client and subscribed Tracking page to shipment location topic
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+---
+ .../java/com/goLogistic/auth/OtpService.java  | 17 ++++-
+ .../V2__create_driver_locations_table.sql     |  2 +-
+ go_logistics_frontend/package.json            |  4 +-
+ .../src/pages/dashboard/Tracking.tsx          | 40 +++++++++--
+ .../src/services/trackingService.ts           | 70 +++++++++++++++++++
+ 5 files changed, 124 insertions(+), 9 deletions(-)
+ create mode 100644 go_logistics_frontend/src/services/trackingService.ts
+
+diff --git a/go_logistics_backend/src/main/java/com/goLogistic/auth/OtpService.java b/go_logistics_backend/src/main/java/com/goLogistic/auth/OtpService.java
+index 486d731..344d998 100644
+--- a/go_logistics_backend/src/main/java/com/goLogistic/auth/OtpService.java
++++ b/go_logistics_backend/src/main/java/com/goLogistic/auth/OtpService.java
+@@ -21,7 +21,10 @@ import java.util.Random;
+ public class OtpService {
+ 
+     private static final int OTP_LENGTH = 6;
+-    private static final long OTP_TTL_SECONDS = 600L;
++    // OTP validity reduced to 1 minute (60 seconds)
++    private static final long OTP_TTL_SECONDS = 60L;
++    // Minimum seconds between sending OTPs to the same email/purpose
++    private static final long OTP_RESEND_LIMIT_SECONDS = 60L;
+     private final OtpVerificationRepository otpRepository;
+     private final UserRepository userRepository;
+     private final AwsNotificationService awsNotificationService;
+@@ -160,10 +163,18 @@ public class OtpService {
+         Optional<OtpVerification> latest = otpRepository
+             .findTopByEmailAndPurposeOrderByCreatedAtDesc(normalizeEmail(email), purpose);
+ 
+-        latest.ifPresent(existing -> {
++        // Rate-limit repeated sends: disallow if last OTP for same email & purpose was created too recently
++        if (latest.isPresent()) {
++            Instant lastCreated = latest.get().getCreatedAt();
++            if (lastCreated != null && lastCreated.isAfter(Instant.now().minusSeconds(OTP_RESEND_LIMIT_SECONDS))) {
++                throw new BadRequestException("Please wait before requesting another OTP");
++            }
++
++            // mark previous OTP as used
++            var existing = latest.get();
+             existing.setUsed(true);
+             otpRepository.save(existing);
+-        });
++        }
+ 
+         OtpVerification verification = new OtpVerification();
+         verification.setEmail(normalizeEmail(email));
+diff --git a/go_logistics_backend/src/main/resources/db/migration/V2__create_driver_locations_table.sql b/go_logistics_backend/src/main/resources/db/migration/V2__create_driver_locations_table.sql
+index 041543a..96dc21e 100644
+--- a/go_logistics_backend/src/main/resources/db/migration/V2__create_driver_locations_table.sql
++++ b/go_logistics_backend/src/main/resources/db/migration/V2__create_driver_locations_table.sql
+@@ -1,6 +1,6 @@
+ -- Create driver_locations table to store driver geolocation updates
+ CREATE TABLE IF NOT EXISTS driver_locations (
+-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
++  id uuid PRIMARY KEY,
+   driver_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+   latitude double precision NOT NULL,
+   longitude double precision NOT NULL,
+diff --git a/go_logistics_frontend/package.json b/go_logistics_frontend/package.json
+index fa5f46a..22b9306 100644
+--- a/go_logistics_frontend/package.json
++++ b/go_logistics_frontend/package.json
+@@ -17,7 +17,9 @@
+     "react": "^19.2.8",
+     "react-dom": "^19.2.8",
+     "react-router-dom": "^7.18.2",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "@stomp/stompjs": "^7.0.0",
++    "sockjs-client": "^1.7.0"
+   },
+   "devDependencies": {
+     "@eslint/js": "^10.0.1",
+diff --git a/go_logistics_frontend/src/pages/dashboard/Tracking.tsx b/go_logistics_frontend/src/pages/dashboard/Tracking.tsx
+index 0afbc3a..9b5a1ab 100644
+--- a/go_logistics_frontend/src/pages/dashboard/Tracking.tsx
++++ b/go_logistics_frontend/src/pages/dashboard/Tracking.tsx
+@@ -1,7 +1,8 @@
+ import { Check, Clock3, MapPin, Search, Truck } from "lucide-react";
+-import { useState } from "react";
++import { useState, useEffect } from "react";
+ 
+ import { getShipmentById, type CustomerShipment } from "../../services/customerService";
++import { subscribeToShipmentLocation, disconnect } from "../../services/trackingService";
+ 
+ const trackingSteps = [
+   { key: "PENDING", title: "Booked" },
+@@ -39,22 +40,34 @@ export default function Tracking() {
+   const [shipment, setShipment] = useState<CustomerShipment | null>(null);
+   const [notFound, setNotFound] = useState(false);
+   const [isLoading, setIsLoading] = useState(false);
++  const [latestLocation, setLatestLocation] = useState<{ lat: number; lon: number } | null>(null);
+ 
+   async function handleSearch() {
+     const normalizedId = trackingId.trim();
+-
++ 
+     if (!normalizedId) {
+       setShipment(null);
+       setNotFound(false);
+       return;
+     }
+-
++ 
+     setIsLoading(true);
+     setNotFound(false);
+-
++ 
+     try {
+       const result = await getShipmentById(normalizedId);
+       setShipment(result);
+++      // subscribe to live updates for this shipment
+++      try {
+++        subscribeToShipmentLocation(result.id, (payload) => {
+++          if (payload && payload.latitude && payload.longitude) {
+++            setLatestLocation({ lat: payload.latitude, lon: payload.longitude });
+++          }
+++        });
+++      } catch (e) {
+++        // ignore subscribe errors
+++        console.warn("Failed to subscribe to live location", e);
+++      }
+     } catch (_error) {
+       setShipment(null);
+       setNotFound(true);
+@@ -63,6 +76,12 @@ export default function Tracking() {
+     }
+   }
+ 
++  useEffect(() => {
++    return () => {
++      disconnect();
++    };
++  }, []);
++
+   return (
+     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+       <div>
+@@ -101,6 +120,19 @@ export default function Tracking() {
+ 
+       {shipment && (
+         <div className="mt-6 space-y-6">
+++          {latestLocation && (
+++            <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-7">
+++              <div className="flex items-center gap-2">
+++                <MapPin size={18} className="text-blue-600" />
+++                <h2 className="font-semibold text-gray-900">Live Location</h2>
+++              </div>
+++              <div className="mt-4">
+++                <p className="text-sm text-gray-700">Latitude: {latestLocation.lat.toFixed(6)}</p>
+++                <p className="text-sm text-gray-700">Longitude: {latestLocation.lon.toFixed(6)}</p>
+++              </div>
+++            </section>
+++          )}
++
+           <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-7">
+             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+               <div>
+diff --git a/go_logistics_frontend/src/services/trackingService.ts b/go_logistics_frontend/src/services/trackingService.ts
+new file mode 100644
+index 0000000..9632937
+--- /dev/null
++++ b/go_logistics_frontend/src/services/trackingService.ts
+@@ -0,0 +1,70 @@
++import { Client, IMessage, StompConfig } from "@stomp/stompjs";
++import SockJS from "sockjs-client";
++
++let stompClient: Client | null = null;
++const subscriptions: Map<string, (msg: any) => void> = new Map();
++
++function ensureClient() {
++  if (stompClient && stompClient.connected) return stompClient;
++
++  stompClient = new Client({
++    // BrokerURL not used when using SockJS - supply webSocketFactory instead
++    webSocketFactory: () => new SockJS("/ws"),
++    reconnectDelay: 5000,
++    heartbeatIncoming: 4000,
++    heartbeatOutgoing: 4000,
++  } as StompConfig);
++
++  stompClient.onConnect = () => {
++    console.log("STOMP connected");
++    // re-subscribe existing handlers
++    subscriptions.forEach((handler, key) => {
++      stompClient?.subscribe(key, (message: IMessage) => {
++        try {
++          handler(JSON.parse(message.body));
++        } catch (e) {
++          handler(message.body);
++        }
++      });
++    });
++  };
++
++  stompClient.onStompError = (frame) => {
++    console.error("Broker reported error: ", frame.headers["message"], frame.body);
++  };
++
++  stompClient.activate();
++  return stompClient;
++}
++
++export function subscribeToShipmentLocation(trackingId: string, handler: (payload: any) => void) {
++  const topic = `/topic/shipments/${trackingId}/location`;
++  subscriptions.set(topic, handler);
++  const client = ensureClient();
++
++  // if already connected subscribe immediately
++  if (client && client.connected) {
++    client.subscribe(topic, (message: IMessage) => {
++      try {
++        handler(JSON.parse(message.body));
++      } catch (e) {
++        handler(message.body);
++      }
++    });
++  }
++
++  return () => unsubscribeShipmentLocation(trackingId);
++}
++
++export function unsubscribeShipmentLocation(trackingId: string) {
++  const topic = `/topic/shipments/${trackingId}/location`;
++  subscriptions.delete(topic);
++  // NOTE: stomp.js returns subscription objects normally - we used a simple map and rely on broker to drop
++}
++
++export function disconnect() {
++  if (stompClient) {
++    stompClient.deactivate();
++    stompClient = null;
++  }
++}
+-- 
+2.43.0
+
