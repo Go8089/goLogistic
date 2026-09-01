@@ -377,7 +377,7 @@ public class CustomerController {
        profile.put("city", normalize(user.getCity()));
        profile.put("state", normalize(user.getState()));
        profile.put("pincode", normalize(user.getPincode()));
-       profile.put("role", user.getRole());
+       profile.put("role", user.getRole().name());
        return profile;
    }
 
