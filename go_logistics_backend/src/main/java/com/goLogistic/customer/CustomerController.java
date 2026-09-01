@@ -37,6 +37,7 @@ public class CustomerController {
    private final UserRepository userRepository;
    private final com.goLogistic.quote.QuoteService quoteService;
    private final BookingRepository bookingRepository;
+   private final com.goLogistic.booking.BookingService bookingService;
    private final PaymentRepository paymentRepository;
    private final ShipmentRepository shipmentRepository;
    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
@@ -45,6 +46,7 @@ public class CustomerController {
        UserRepository userRepository,
        com.goLogistic.quote.QuoteService quoteService,
        BookingRepository bookingRepository,
+       com.goLogistic.booking.BookingService bookingService,
        PaymentRepository paymentRepository,
        ShipmentRepository shipmentRepository,
        org.springframework.context.ApplicationEventPublisher eventPublisher
@@ -52,6 +54,7 @@ public class CustomerController {
        this.userRepository = userRepository;
        this.quoteService = quoteService;
        this.bookingRepository = bookingRepository;
+       this.bookingService = bookingService;
        this.paymentRepository = paymentRepository;
        this.shipmentRepository = shipmentRepository;
        this.eventPublisher = eventPublisher;
@@ -118,40 +121,28 @@ public class CustomerController {
            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Quote does not belong to this customer");
        }
 
-       if (quote.getStatus() != QuoteStatus.APPROVED) {
-           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only approved quotes can be booked");
+       try {
+           Booking saved = bookingService.createBookingFromQuote(user, quote);
+
+           Map<String, Object> response = new LinkedHashMap<>();
+           response.put("bookingId", saved.getBookingCode());
+           response.put("quoteId", quote.getReferenceCode());
+           response.put("customer", user.getName());
+           response.put("route", saved.getRoute());
+           response.put("vehicle", saved.getVehicle());
+           response.put("amount", saved.getAmount());
+           response.put("status", saved.getStatus().name());
+           response.put("bookingDate", saved.getBookingDate());
+           return ResponseEntity.ok(response);
+       } catch (IllegalArgumentException ex) {
+           throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage());
+       } catch (IllegalStateException ex) {
+           String msg = ex.getMessage() == null ? "Invalid request" : ex.getMessage();
+           if (msg.contains("already been booked")) {
+               throw new ResponseStatusException(HttpStatus.CONFLICT, msg);
+           }
+           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, msg);
        }
-
-       if (quote.getExpiresAt() != null && LocalDateTime.now().isAfter(quote.getExpiresAt())) {
-           quote.setStatus(QuoteStatus.EXPIRED);
-           quoteRequestRepository.save(quote);
-           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This quote has expired");
-       }
-
-       if (bookingRepository.findByQuote(quote).isPresent()) {
-           throw new ResponseStatusException(HttpStatus.CONFLICT, "This quote has already been booked");
-       }
-
-       Booking booking = new Booking();
-       booking.setCustomer(user);
-       booking.setQuote(quote);
-       booking.setRoute(quote.getOrigin() + " → " + quote.getDestination());
-       booking.setVehicle(quote.getRequestedVehicle());
-       booking.setAmount(quote.getAmount());
-       booking.setStatus(BookingStatus.PAYMENT_PENDING);
-       booking.setBookingCode("BK" + System.currentTimeMillis());
-       Booking saved = bookingRepository.save(booking);
-
-       Map<String, Object> response = new LinkedHashMap<>();
-       response.put("bookingId", saved.getBookingCode());
-       response.put("quoteId", quote.getReferenceCode());
-       response.put("customer", user.getName());
-       response.put("route", saved.getRoute());
-       response.put("vehicle", saved.getVehicle());
-       response.put("amount", saved.getAmount());
-       response.put("status", saved.getStatus().name());
-       response.put("bookingDate", saved.getBookingDate());
-       return ResponseEntity.ok(response);
    }
 
    @PostMapping("/payments")
