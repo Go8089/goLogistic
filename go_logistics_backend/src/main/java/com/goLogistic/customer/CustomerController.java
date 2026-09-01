@@ -162,34 +162,7 @@ public class CustomerController {
        } catch (IllegalStateException ex) {
            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
        }
-   }                   ? booking.getRoute().split("→", 2)[0].trim()
-                   : booking.getRoute());
-               shipment.setDestination(booking.getRoute().contains("→")
-                   ? booking.getRoute().split("→", 2)[1].trim()
-                   : booking.getRoute());
-               shipment.setVehicleRegistration(booking.getVehicle() != null ? booking.getVehicle() : "MH12 AB 1234");
-               shipment.setShipmentDate(LocalDateTime.now());
-               shipment.setEstimatedDelivery(LocalDateTime.now().plusDays(2));
-               shipment.setStatus(ShipmentStatus.PENDING);
-               shipmentRepository.save(shipment);
-               // publish shipment created event
-               try {
-                   eventPublisher.publishEvent(new com.goLogistic.notification.events.ShipmentCreatedEvent(this, shipment));
-               } catch (Exception ex) {
-                   // don't fail the request if event publishing fails
-               }
-           }
-       }
-
-       try {
-           Payment saved = paymentService.createPayment(user, payload);
-           return ResponseEntity.status(HttpStatus.CREATED).body(toPaymentMap(saved));
-       } catch (IllegalArgumentException ex) {
-           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
-       } catch (IllegalStateException ex) {
-           throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
-       }
-   }
+    }
 
    @GetMapping("/bookings")
    public ResponseEntity<List<Map<String, Object>>> getMyBookings(Authentication authentication) {
