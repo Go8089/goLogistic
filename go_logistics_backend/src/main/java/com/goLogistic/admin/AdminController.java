@@ -394,7 +394,6 @@ public class AdminController {
             return ResponseEntity.status(409).body(Map.of("message", ex.getMessage()));
         }
     }
-    }
 
     @PutMapping("/users/{id}/notification-channel")
     public ResponseEntity<Map<String, Object>> updateUserNotificationChannel(

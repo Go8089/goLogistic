@@ -31,15 +31,17 @@ public class NotificationController {
         }
 
         List<Notification> list = notificationRepository.findByUserOrderByCreatedAtDesc(user);
-        List<Map<String, Object>> payload = list.stream().map(n -> Map.of(
-            "id", n.getId(),
-            "type", n.getType(),
-            "channel", n.getChannel(),
-            "message", n.getMessage(),
-            "status", n.getStatus().name(),
-            "createdAt", n.getCreatedAt(),
-            "sentAt", n.getSentAt()
-        )).collect(Collectors.toList());
+        List<Map<String, Object>> payload = list.stream().map(n -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", n.getId());
+            m.put("type", n.getType());
+            m.put("channel", n.getChannel());
+            m.put("message", n.getMessage());
+            m.put("status", n.getStatus().name());
+            m.put("createdAt", n.getCreatedAt());
+            m.put("sentAt", n.getSentAt());
+            return m;
+        }).collect(Collectors.toList());
 
         return ResponseEntity.ok(payload);
     }
