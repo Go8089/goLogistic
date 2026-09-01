@@ -154,48 +154,15 @@ public class CustomerController {
        @RequestBody Map<String, Object> payload
    ) {
        User user = currentUser(authentication);
-
-       String bookingCode = String.valueOf(payload.getOrDefault("bookingCode", "")).trim();
-       if (bookingCode.isBlank()) {
-           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Booking code is required");
+       try {
+           Payment saved = paymentService.createPayment(user, payload);
+           return ResponseEntity.status(HttpStatus.CREATED).body(toPaymentMap(saved));
+       } catch (IllegalArgumentException ex) {
+           throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+       } catch (IllegalStateException ex) {
+           throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
        }
-
-       Booking booking = bookingRepository.findByBookingCode(bookingCode)
-           .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
-
-       if (!booking.getCustomer().getId().equals(user.getId())) {
-           throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Booking does not belong to this customer");
-       }
-
-       if (paymentRepository.findByBooking(booking).isPresent()) {
-           throw new ResponseStatusException(HttpStatus.CONFLICT, "Payment already exists for this booking");
-       }
-
-       String method = String.valueOf(payload.getOrDefault("method", "UPI")).trim().toUpperCase();
-       String transactionReference = String.valueOf(payload.getOrDefault("transactionReference", payload.getOrDefault("transactionId", "TXN" + System.currentTimeMillis()))).trim();
-       String statusValue = String.valueOf(payload.getOrDefault("status", "PENDING")).trim().toUpperCase();
-       PaymentStatus status = PaymentStatus.valueOf(statusValue.replace("PAID", "SUCCESS"));
-
-       Payment payment = new Payment();
-       payment.setCustomer(user);
-       payment.setBooking(booking);
-       payment.setQuoteReference(booking.getQuote().getReferenceCode());
-       payment.setAmount(booking.getAmount());
-       payment.setMethod(method);
-       payment.setTransactionReference(transactionReference);
-       payment.setStatus(status);
-
-       if (status == PaymentStatus.SUCCESS) {
-           booking.setStatus(BookingStatus.CONFIRMED);
-           bookingRepository.save(booking);
-
-           Shipment existingShipment = shipmentRepository.findByBooking(booking).orElse(null);
-           if (existingShipment == null) {
-               Shipment shipment = new Shipment();
-               shipment.setBooking(booking);
-               shipment.setCustomer(user);
-               shipment.setOrigin(booking.getRoute().contains("→")
-                   ? booking.getRoute().split("→", 2)[0].trim()
+   }                   ? booking.getRoute().split("→", 2)[0].trim()
                    : booking.getRoute());
                shipment.setDestination(booking.getRoute().contains("→")
                    ? booking.getRoute().split("→", 2)[1].trim()
