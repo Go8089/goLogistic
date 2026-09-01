@@ -39,6 +39,7 @@ public class CustomerController {
    private final BookingRepository bookingRepository;
    private final com.goLogistic.booking.BookingService bookingService;
    private final com.goLogistic.payment.PaymentService paymentService;
+   private final PaymentRepository paymentRepository;
    private final ShipmentRepository shipmentRepository;
    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -48,6 +49,7 @@ public class CustomerController {
        BookingRepository bookingRepository,
        com.goLogistic.booking.BookingService bookingService,
        com.goLogistic.payment.PaymentService paymentService,
+       PaymentRepository paymentRepository,
        ShipmentRepository shipmentRepository,
        org.springframework.context.ApplicationEventPublisher eventPublisher
    ) {
@@ -56,6 +58,7 @@ public class CustomerController {
        this.bookingRepository = bookingRepository;
        this.bookingService = bookingService;
        this.paymentService = paymentService;
+       this.paymentRepository = paymentRepository;
        this.shipmentRepository = shipmentRepository;
        this.eventPublisher = eventPublisher;
    }
