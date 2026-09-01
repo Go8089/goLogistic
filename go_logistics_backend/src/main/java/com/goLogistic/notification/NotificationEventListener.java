@@ -22,11 +22,13 @@ public class NotificationEventListener {
 
     private final NotificationRepository notificationRepository;
     private final AwsNotificationService awsNotificationService;
+    private final WhatsAppService whatsAppService;
 
-    public NotificationEventListener(NotificationRepository notificationRepository, AwsNotificationService awsNotificationService, SimpMessagingTemplate messagingTemplate) {
+    public NotificationEventListener(NotificationRepository notificationRepository, AwsNotificationService awsNotificationService, SimpMessagingTemplate messagingTemplate, WhatsAppService whatsAppService) {
         this.notificationRepository = notificationRepository;
         this.awsNotificationService = awsNotificationService;
         this.messagingTemplate = messagingTemplate;
+        this.whatsAppService = whatsAppService;
     }
 
     @EventListener
