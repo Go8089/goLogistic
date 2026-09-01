@@ -38,7 +38,10 @@ public class NotificationEventListener {
             notificationRepository.save(n);
 
             // send email & optionally sms
-            awsNotificationService.sendPasswordResetEmail(payment.getCustomer().getEmail(), message);
+            String subject = "Payment received — Go Logistics";
+            String htmlBody = "<p>" + message + "</p>";
+            String textBody = message;
+            awsNotificationService.sendEmail(payment.getCustomer().getEmail(), subject, htmlBody, textBody);
 
             n.setStatus(NotificationStatus.SENT);
             n.setSentAt(LocalDateTime.now());
@@ -60,7 +63,10 @@ public class NotificationEventListener {
             n.setMessage(message);
             notificationRepository.save(n);
 
-            awsNotificationService.sendPasswordResetEmail(shipment.getCustomer().getEmail(), message);
+            String subject = "Shipment created — Go Logistics";
+            String htmlBody = "<p>" + message + "</p>";
+            String textBody = message;
+            awsNotificationService.sendEmail(shipment.getCustomer().getEmail(), subject, htmlBody, textBody);
 
             n.setStatus(NotificationStatus.SENT);
             n.setSentAt(LocalDateTime.now());
