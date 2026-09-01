@@ -35,7 +35,7 @@ import java.util.Map;
 public class CustomerController {
 
    private final UserRepository userRepository;
-   private final QuoteRequestRepository quoteRequestRepository;
+   private final com.goLogistic.quote.QuoteService quoteService;
    private final BookingRepository bookingRepository;
    private final PaymentRepository paymentRepository;
    private final ShipmentRepository shipmentRepository;
@@ -43,14 +43,14 @@ public class CustomerController {
 
    public CustomerController(
        UserRepository userRepository,
-       QuoteRequestRepository quoteRequestRepository,
+       com.goLogistic.quote.QuoteService quoteService,
        BookingRepository bookingRepository,
        PaymentRepository paymentRepository,
        ShipmentRepository shipmentRepository,
        org.springframework.context.ApplicationEventPublisher eventPublisher
    ) {
        this.userRepository = userRepository;
-       this.quoteRequestRepository = quoteRequestRepository;
+       this.quoteService = quoteService;
        this.bookingRepository = bookingRepository;
        this.paymentRepository = paymentRepository;
        this.shipmentRepository = shipmentRepository;
@@ -72,20 +72,7 @@ public class CustomerController {
    ) {
        User user = currentUser(authentication);
 
-       QuoteRequest quote = new QuoteRequest();
-       quote.setCustomer(user);
-       quote.setCustomerName(user.getName());
-       quote.setEmail(user.getEmail());
-       quote.setOrigin(request.origin().trim());
-       quote.setDestination(request.destination().trim());
-       quote.setCargo(request.cargo().trim());
-       quote.setWeight(request.weight().trim());
-       quote.setContainerSize(request.containerSize().trim());
-       quote.setRequestedVehicle(request.requestedVehicle().trim());
-       quote.setAmount(new BigDecimal(request.amount().trim().replaceAll("[₹,]", "")));
-       quote.setStatus(QuoteStatus.PENDING);
-       QuoteRequest saved = quoteRequestRepository.save(quote);
-
+       QuoteRequest saved = quoteService.createQuote(user, request);
        return ResponseEntity.status(HttpStatus.CREATED).body(toQuoteMap(saved));
    }
 
@@ -94,7 +81,7 @@ public class CustomerController {
        Authentication authentication
    ) {
        User user = currentUser(authentication);
-       List<QuoteRequest> quotes = quoteRequestRepository.findByCustomerOrderByRequestedAtDesc(user);
+       List<QuoteRequest> quotes = quoteService.getQuotesForUser(user);
        return ResponseEntity.ok(quotes.stream().map(this::toQuoteMap).toList());
    }
 
@@ -104,8 +91,10 @@ public class CustomerController {
        @PathVariable String referenceCode
    ) {
        User user = currentUser(authentication);
-       QuoteRequest quote = quoteRequestRepository.findByReferenceCode(referenceCode)
-           .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quote not found"));
+       QuoteRequest quote = quoteService.findByReferenceCode(referenceCode);
+       if (quote == null) {
+           throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Quote not found");
+       }
 
        if (!quote.getCustomer().getId().equals(user.getId())) {
            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Quote does not belong to this customer");
@@ -120,8 +109,10 @@ public class CustomerController {
        @PathVariable String referenceCode
    ) {
        User user = currentUser(authentication);
-       QuoteRequest quote = quoteRequestRepository.findByReferenceCode(referenceCode)
-           .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quote not found"));
+       QuoteRequest quote = quoteService.findByReferenceCode(referenceCode);
+       if (quote == null) {
+           throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Quote not found");
+       }
 
        if (!quote.getCustomer().getId().equals(user.getId())) {
            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Quote does not belong to this customer");
