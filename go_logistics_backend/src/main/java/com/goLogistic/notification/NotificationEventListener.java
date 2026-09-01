@@ -8,6 +8,7 @@ import com.goLogistic.aws.AwsNotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -15,14 +16,17 @@ import java.time.LocalDateTime;
 @Component
 public class NotificationEventListener {
 
+    private final SimpMessagingTemplate messagingTemplate;
+
     private static final Logger log = LoggerFactory.getLogger(NotificationEventListener.class);
 
     private final NotificationRepository notificationRepository;
     private final AwsNotificationService awsNotificationService;
 
-    public NotificationEventListener(NotificationRepository notificationRepository, AwsNotificationService awsNotificationService) {
+    public NotificationEventListener(NotificationRepository notificationRepository, AwsNotificationService awsNotificationService, SimpMessagingTemplate messagingTemplate) {
         this.notificationRepository = notificationRepository;
         this.awsNotificationService = awsNotificationService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @EventListener
@@ -46,6 +50,19 @@ public class NotificationEventListener {
             n.setStatus(NotificationStatus.SENT);
             n.setSentAt(LocalDateTime.now());
             notificationRepository.save(n);
+
+            try {
+                var payload = java.util.Map.of(
+                    "id", n.getId(),
+                    "type", n.getType(),
+                    "message", n.getMessage(),
+                    "status", n.getStatus().name(),
+                    "createdAt", n.getCreatedAt()
+                );
+                messagingTemplate.convertAndSend("/topic/notifications/" + n.getUser().getId(), payload);
+            } catch (Exception ex) {
+                log.warn("Failed to push websocket notification", ex);
+            }
         } catch (Exception ex) {
             log.error("Failed to process payment received event", ex);
         }
@@ -71,6 +88,19 @@ public class NotificationEventListener {
             n.setStatus(NotificationStatus.SENT);
             n.setSentAt(LocalDateTime.now());
             notificationRepository.save(n);
+
+            try {
+                var payload = java.util.Map.of(
+                    "id", n.getId(),
+                    "type", n.getType(),
+                    "message", n.getMessage(),
+                    "status", n.getStatus().name(),
+                    "createdAt", n.getCreatedAt()
+                );
+                messagingTemplate.convertAndSend("/topic/notifications/" + n.getUser().getId(), payload);
+            } catch (Exception ex) {
+                log.warn("Failed to push websocket notification", ex);
+            }
         } catch (Exception ex) {
             log.error("Failed to process shipment created event", ex);
         }
