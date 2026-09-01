@@ -39,19 +39,22 @@ public class CustomerController {
    private final BookingRepository bookingRepository;
    private final PaymentRepository paymentRepository;
    private final ShipmentRepository shipmentRepository;
+   private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
    public CustomerController(
        UserRepository userRepository,
        QuoteRequestRepository quoteRequestRepository,
        BookingRepository bookingRepository,
        PaymentRepository paymentRepository,
-       ShipmentRepository shipmentRepository
+       ShipmentRepository shipmentRepository,
+       org.springframework.context.ApplicationEventPublisher eventPublisher
    ) {
        this.userRepository = userRepository;
        this.quoteRequestRepository = quoteRequestRepository;
        this.bookingRepository = bookingRepository;
        this.paymentRepository = paymentRepository;
        this.shipmentRepository = shipmentRepository;
+       this.eventPublisher = eventPublisher;
    }
 
    @GetMapping("/me")
@@ -217,10 +220,26 @@ public class CustomerController {
                shipment.setEstimatedDelivery(LocalDateTime.now().plusDays(2));
                shipment.setStatus(ShipmentStatus.PENDING);
                shipmentRepository.save(shipment);
+               // publish shipment created event
+               try {
+                   eventPublisher.publishEvent(new com.goLogistic.notification.events.ShipmentCreatedEvent(this, shipment));
+               } catch (Exception ex) {
+                   // don't fail the request if event publishing fails
+               }
            }
        }
 
        Payment saved = paymentRepository.save(payment);
+
+       // publish payment received event for successful payments
+       try {
+           if (saved.getStatus() == com.goLogistic.payment.PaymentStatus.SUCCESS) {
+               eventPublisher.publishEvent(new com.goLogistic.notification.events.PaymentReceivedEvent(this, saved));
+           }
+       } catch (Exception ex) {
+           // best-effort
+       }
+
        return ResponseEntity.status(HttpStatus.CREATED).body(toPaymentMap(saved));
    }
 
