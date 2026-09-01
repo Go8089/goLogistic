@@ -1,7 +1,8 @@
 import { Check, Clock3, MapPin, Search, Truck } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { getShipmentById, type CustomerShipment } from "../../services/customerService";
+import { subscribeToShipmentLocation, disconnect } from "../../services/trackingService";
 
 const trackingSteps = [
   { key: "PENDING", title: "Booked" },
@@ -39,22 +40,34 @@ export default function Tracking() {
   const [shipment, setShipment] = useState<CustomerShipment | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [latestLocation, setLatestLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   async function handleSearch() {
     const normalizedId = trackingId.trim();
-
+ 
     if (!normalizedId) {
       setShipment(null);
       setNotFound(false);
       return;
     }
-
+ 
     setIsLoading(true);
     setNotFound(false);
-
+ 
     try {
       const result = await getShipmentById(normalizedId);
       setShipment(result);
++      // subscribe to live updates for this shipment
++      try {
++        subscribeToShipmentLocation(result.id, (payload) => {
++          if (payload && payload.latitude && payload.longitude) {
++            setLatestLocation({ lat: payload.latitude, lon: payload.longitude });
++          }
++        });
++      } catch (e) {
++        // ignore subscribe errors
++        console.warn("Failed to subscribe to live location", e);
++      }
     } catch (_error) {
       setShipment(null);
       setNotFound(true);
@@ -62,6 +75,12 @@ export default function Tracking() {
       setIsLoading(false);
     }
   }
+
+  useEffect(() => {
+    return () => {
+      disconnect();
+    };
+  }, []);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -101,6 +120,19 @@ export default function Tracking() {
 
       {shipment && (
         <div className="mt-6 space-y-6">
++          {latestLocation && (
++            <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-7">
++              <div className="flex items-center gap-2">
++                <MapPin size={18} className="text-blue-600" />
++                <h2 className="font-semibold text-gray-900">Live Location</h2>
++              </div>
++              <div className="mt-4">
++                <p className="text-sm text-gray-700">Latitude: {latestLocation.lat.toFixed(6)}</p>
++                <p className="text-sm text-gray-700">Longitude: {latestLocation.lon.toFixed(6)}</p>
++              </div>
++            </section>
++          )}
+
           <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-7">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>

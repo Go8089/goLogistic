@@ -21,7 +21,10 @@ import java.util.Random;
 public class OtpService {
 
     private static final int OTP_LENGTH = 6;
-    private static final long OTP_TTL_SECONDS = 600L;
+    // OTP validity reduced to 1 minute (60 seconds)
+    private static final long OTP_TTL_SECONDS = 60L;
+    // Minimum seconds between sending OTPs to the same email/purpose
+    private static final long OTP_RESEND_LIMIT_SECONDS = 60L;
     private final OtpVerificationRepository otpRepository;
     private final UserRepository userRepository;
     private final AwsNotificationService awsNotificationService;
@@ -160,10 +163,18 @@ public class OtpService {
         Optional<OtpVerification> latest = otpRepository
             .findTopByEmailAndPurposeOrderByCreatedAtDesc(normalizeEmail(email), purpose);
 
-        latest.ifPresent(existing -> {
+        // Rate-limit repeated sends: disallow if last OTP for same email & purpose was created too recently
+        if (latest.isPresent()) {
+            Instant lastCreated = latest.get().getCreatedAt();
+            if (lastCreated != null && lastCreated.isAfter(Instant.now().minusSeconds(OTP_RESEND_LIMIT_SECONDS))) {
+                throw new BadRequestException("Please wait before requesting another OTP");
+            }
+
+            // mark previous OTP as used
+            var existing = latest.get();
             existing.setUsed(true);
             otpRepository.save(existing);
-        });
+        }
 
         OtpVerification verification = new OtpVerification();
         verification.setEmail(normalizeEmail(email));

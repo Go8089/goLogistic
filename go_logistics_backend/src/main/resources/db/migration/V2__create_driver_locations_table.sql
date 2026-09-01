@@ -1,6 +1,6 @@
 -- Create driver_locations table to store driver geolocation updates
 CREATE TABLE IF NOT EXISTS driver_locations (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY,
   driver_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   latitude double precision NOT NULL,
   longitude double precision NOT NULL,
